@@ -75,6 +75,8 @@ catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定s
 
 schemaが `▾` で展開され、Headerにschema名が表示されていれば選択済みです。その状態でcatalogのどこからでも `e` を押すとSQL workbenchへ移動します。
 
+展開中のschema見出しで再度 `Enter` を押すとtable一覧を折りたためます。折りたたみ後は `j` / `k` で隣のschemaへ直接移動できます。
+
 ## キーバインド
 
 | Key             | 動作                                      |

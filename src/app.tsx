@@ -305,6 +305,10 @@ export function App() {
       const dialect = dialectFor(connected.info.engine);
       try {
         if (node.kind === "schema") {
+          if (node.value.schema === state.selectedSchema) {
+            dispatch({ type: "schemaCollapsed" });
+            return;
+          }
           dispatch({ type: "catalogLoading", message: "Loading tables…" });
           await selectSchema(connected, dialect, node.value.schema);
           const tables = await listTables(
@@ -328,7 +332,7 @@ export function App() {
         showCatalogError(error);
       }
     },
-    [runTablePage, showCatalogError],
+    [runTablePage, showCatalogError, state.selectedSchema],
   );
 
   const reloadSchemas = useCallback(async (showSystem: boolean) => {

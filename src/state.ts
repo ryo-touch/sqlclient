@@ -95,6 +95,7 @@ export type Action =
   | { type: "catalogLoading"; message: string }
   | { type: "schemasLoaded"; schemas: SchemaRef[]; showSystem: boolean }
   | { type: "tablesLoaded"; schema: string; tables: TableRef[] }
+  | { type: "schemaCollapsed" }
   | { type: "columnsLoaded"; table: string; columns: ColumnRef[] }
   | { type: "setCatalogPane"; pane: "schemas" | "tables" }
   | { type: "queryStarted"; message: string }
@@ -266,6 +267,15 @@ export function reducer(state: AppState, action: Action): AppState {
         running: false,
         message: undefined,
         lastUpdated: new Date(),
+      };
+    case "schemaCollapsed":
+      return {
+        ...state,
+        tables: [],
+        columns: [],
+        selectedSchema: undefined,
+        selectedTable: undefined,
+        message: undefined,
       };
     case "columnsLoaded":
       return {

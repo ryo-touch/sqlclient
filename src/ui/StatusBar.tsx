@@ -16,7 +16,7 @@ function keys(mode: Mode): string {
     case "connections":
       return "j/k move · Enter connect · / filter · ? help · q quit";
     case "catalog":
-      return "j/k move · h/l pane · Enter open · s system · y copy · e query · Tab result · ? help · q back";
+      return "j/k move · h/l pane · Enter toggle/open · s system · y copy · e query · Tab result · ? help · q back";
     case "result":
       return "j/k rows · h/l columns · n/p page · y copy · e edit · r rerun · Tab query · ? help · q catalog";
     case "query":
@@ -31,7 +31,7 @@ function compactKeys(mode: Mode): string {
     case "connections":
       return "j/k move Enter connect / filter ? help q quit";
     case "catalog":
-      return "j/k move h/l pane Enter open s sys y copy e query ? help q back";
+      return "j/k move h/l pane Enter toggle s sys y copy e query ? help q back";
     case "result":
       return "j/k rows h/l cols n/p page y copy e SQL r rerun Tab query q back";
     case "query":

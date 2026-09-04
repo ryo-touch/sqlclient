@@ -336,7 +336,7 @@ export interface Dialect {
 - `j` / `k` または矢印: 上下移動
 - `h` / `l`: result では横スクロール、catalog ではペイン移動
 - `g` / `G`: 先頭 / 末尾
-- `Enter`: 選択して次の階層へ
+- `Enter`: schema を展開／折りたたむ。table は選択して次の階層へ
 - `Tab`: catalog ⇄ result ⇄ query を巡回
 - `Shift+Tab`: query mode の editor / result / history を逆順に巡回
 - `e`: query mode の SQL editor に移動する

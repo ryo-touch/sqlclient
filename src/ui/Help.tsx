@@ -4,7 +4,7 @@ const bindings = [
   ["j / k, arrows", "move up and down"],
   ["h / l", "move catalog pane or result column"],
   ["g / G", "move to first or last item"],
-  ["Enter", "open or execute selection"],
+  ["Enter", "expand/collapse schema or open selection"],
   ["Tab", "cycle catalog, result, and query"],
   ["Shift+Tab", "cycle query panes in reverse"],
   ["e", "open the in-app SQL editor"],

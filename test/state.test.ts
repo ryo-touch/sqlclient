@@ -65,6 +65,12 @@ describe("application reducer", () => {
       selectedSchema: "public",
       tables: [{ table: "items" }],
     });
+    expect(reducer(tables, { type: "schemaCollapsed" })).toMatchObject({
+      selectedSchema: undefined,
+      selectedTable: undefined,
+      tables: [],
+      columns: [],
+    });
   });
 
   test("returns from help to the mode that opened it", () => {
