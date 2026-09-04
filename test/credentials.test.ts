@@ -122,7 +122,8 @@ describe("credential discovery and resolution", () => {
     const fakeExec: Exec = async (executable, args) => {
       calls.push([executable, ...args]);
       return {
-        stdout: "[staging]\nuser = reader\npassword = *****\n",
+        stdout:
+          "[staging]\nuser = reader\npassword = *****\n[production]\nuser = reader\npassword = *****\n",
         stderr: "",
         exitCode: 0,
       };
@@ -138,6 +139,12 @@ describe("credential discovery and resolution", () => {
     expect(result.connections).toEqual([
       {
         name: "staging",
+        engine: "mysql",
+        source: "mylogin",
+        available: true,
+      },
+      {
+        name: "production",
         engine: "mysql",
         source: "mylogin",
         available: true,

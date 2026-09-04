@@ -40,6 +40,8 @@ mysql_config_editor set \
 
 検証用に別ファイルを使う場合は `MYSQL_TEST_LOGIN_FILE` を指定できます。アプリが `.mylogin.cnf` を作成・変更することはありません。
 
+接続名による環境制限はありません。production用login-pathも一覧から選択してSQLを実行できます。接続先の安全性は名前ではなく、接続直後に確認するserver-side read-only設定で担保します。
+
 ### PostgreSQL
 
 `~/.pg_service.conf` に接続先を定義します。

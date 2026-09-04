@@ -10,6 +10,8 @@ MySQL名の列挙には、passwordを常にマスクする `mysql_config_editor 
 
 read-onlyはconnection pool全体ではなくserver sessionの属性である。設定したconnectionと実クエリのconnectionがずれることを防ぐため、選択中はpoolからreserveした1本だけを使う。確認前の失敗や切断後はそのsessionを再利用しない。
 
+staging / productionのような接続名は認可情報として扱わない。Auroraを含む接続先が返すread-only状態を正本とし、確認できたsessionだけを利用する。これによりproduction用login-pathも、DB側の権限とread-only設定を保ったまま使用できる。
+
 ## cancelは別connectionからserverへ送る
 
 Bun 1.4.0では実行中でも `Query.active` がfalseのままになり、`Query.cancel()` もPostgreSQL/MySQLの実測でクエリを止めなかった。接続時にbackend IDを取得し、短命なcontrol connectionからPostgreSQLは `pg_cancel_backend`、MySQLは `KILL QUERY` を送る。さらにserver sessionにも30秒timeoutを設定し、UI timerだけに安全性を依存させない。
