@@ -12,6 +12,7 @@ import {
 import { listColumns, listSchemas, listTables } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
+import { editQuery } from "./core/editor.ts";
 import { initialState, reducer } from "./state.ts";
 import { ConnectionList } from "./ui/ConnectionList.tsx";
 import { FilterInput } from "./ui/FilterInput.tsx";
@@ -22,7 +23,7 @@ import { QueryPane } from "./ui/QueryPane.tsx";
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { exit } = useApp();
+  const { exit, suspendTerminal } = useApp();
   const session = useRef<DatabaseSession | undefined>(undefined);
 
   useEffect(() => {
@@ -176,6 +177,21 @@ export function App() {
     }
   }, []);
 
+  const editAndRun = useCallback(async () => {
+    try {
+      let edited: Awaited<ReturnType<typeof editQuery>> | undefined;
+      await suspendTerminal(async () => {
+        edited = await editQuery(state.result?.sql ?? "");
+      });
+      if (edited?.changed && edited.sql) await runUserSql(edited.sql);
+    } catch {
+      dispatch({
+        type: "showError",
+        error: { message: "The SQL editor could not be opened" },
+      });
+    }
+  }, [runUserSql, state.result?.sql, suspendTerminal]);
+
   const openCatalogNode = useCallback(
     async (node: CatalogNode) => {
       const connected = session.current;
@@ -234,6 +250,11 @@ export function App() {
       return;
     }
     if (state.running) return;
+
+    if (input === "e" && state.current) {
+      void editAndRun();
+      return;
+    }
 
     const movementCommands = [...input];
     if (
@@ -520,8 +541,8 @@ export function App() {
           : state.mode === "catalog"
             ? "j/k move · h/l pane · Enter open · s system · Tab result · / filter · q back"
             : state.mode === "result"
-              ? "j/k rows · h/l columns · n/p page · r rerun · Tab query · q catalog"
-              : "j/k history · Enter/r run · Tab catalog · q result"}
+              ? "j/k rows · h/l columns · n/p page · e edit · r rerun · Tab query · q catalog"
+              : "j/k history · Enter/r run · e edit · Tab catalog · q result"}
       </Text>
     </Box>
   );
