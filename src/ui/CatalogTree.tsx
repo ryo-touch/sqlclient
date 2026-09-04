@@ -9,6 +9,7 @@ interface CatalogTreeProps {
   nodes: readonly CatalogNode[];
   selectedIndex: number;
   selectedSchema?: string;
+  expandedSchema?: string;
   selectedTable?: string;
 }
 
@@ -31,6 +32,7 @@ export function CatalogTree({
   nodes,
   selectedIndex,
   selectedSchema,
+  expandedSchema,
   selectedTable,
 }: CatalogTreeProps) {
   const { stdout } = useStdout();
@@ -56,12 +58,13 @@ export function CatalogTree({
         const index = nodeRange.start + localIndex;
         const selected = index === selectedIndex;
         if (node.kind === "schema") {
-          const expanded = node.value.schema === selectedSchema;
+          const expanded = node.value.schema === expandedSchema;
+          const active = node.value.schema === selectedSchema;
           return (
             <Text
               key={`schema:${node.value.schema}`}
               inverse={selected}
-              color={expanded ? "cyan" : undefined}
+              color={active ? "cyan" : undefined}
             >
               {selected ? ">" : " "} {expanded ? "▾" : "▸"}{" "}
               {truncate(node.value.schema, contentWidth - 4)}

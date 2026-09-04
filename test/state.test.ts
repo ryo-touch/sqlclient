@@ -50,11 +50,24 @@ describe("application reducer", () => {
         user: "reader",
       },
     });
+    expect(connected.mode).toBe("catalog");
     const schemas = reducer(connected, {
       type: "schemasLoaded",
       schemas: [{ schema: "public" }],
       showSystem: false,
     });
+    const selected = reducer(schemas, {
+      type: "schemaSelected",
+      schema: "public",
+    });
+    expect(selected).toMatchObject({
+      selectedSchema: "public",
+      expandedSchema: undefined,
+      tables: [],
+    });
+    expect(
+      reducer(selected, { type: "openQueryEditor", initialSql: "" }).mode,
+    ).toBe("query");
     const tables = reducer(schemas, {
       type: "tablesLoaded",
       schema: "public",
@@ -62,11 +75,16 @@ describe("application reducer", () => {
     });
     expect(tables).toMatchObject({
       selectedSchema: "public",
+      expandedSchema: "public",
       tables: [{ table: "items" }],
     });
-    expect(reducer(tables, { type: "schemaCollapsed" })).toMatchObject({
-      selectedSchema: undefined,
+    expect(
+      reducer(tables, { type: "schemaCollapsed", selectedIndex: 0 }),
+    ).toMatchObject({
+      selectedSchema: "public",
+      expandedSchema: undefined,
       tables: [],
+      selectedIndex: 0,
     });
   });
 

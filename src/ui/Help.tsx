@@ -2,9 +2,9 @@ import { Box, Text } from "ink";
 
 const bindings = [
   ["j / k, arrows", "move up and down"],
-  ["h / l", "move result column"],
+  ["h / l", "collapse/expand catalog or move result column"],
   ["g / G", "move to first or last item"],
-  ["Enter", "expand/collapse schema or open selection"],
+  ["Enter", "connect, select schema for query, or open table"],
   ["Tab", "cycle catalog, result, and query"],
   ["Shift+Tab", "cycle query panes in reverse"],
   ["e", "open the in-app SQL editor"],

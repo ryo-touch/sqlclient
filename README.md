@@ -73,37 +73,37 @@ chmod 600 ~/.pgpass
 
 catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定schemaにも設定します。以降は `SELECT * FROM table_name` のようにschema名を省略したSQLも、選択中のschemaに対して実行されます。
 
-schemaが `▾` で展開され、Headerにschema名が表示されていれば選択済みです。その状態でcatalogのどこからでも `e` を押すとSQL workbenchへ移動します。
+schemaを選択するとHeaderにschema名が表示されます。table一覧はcatalogで `l` または右矢印を押したschemaだけ、`▾` の下に表示されます。
 
 tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示します。任意SQLの結果では誤認を避けるためtable名を表示しません。
 
-展開中のschema見出しで再度 `Enter` を押すとtable一覧を折りたためます。折りたたみ後は `j` / `k` で隣のschemaへ直接移動できます。
-
 ## キーバインド
 
-| Key             | 動作                                      |
-| --------------- | ----------------------------------------- |
-| `j` / `k`, 矢印 | 上下移動                                  |
-| `h` / `l`       | resultの列移動                            |
-| `g` / `G`       | 先頭 / 末尾                               |
-| `Enter`         | 接続・schema展開・table表示・履歴再実行   |
-| `Tab`           | catalog → result → queryを巡回            |
-| `Shift+Tab`     | query内のfocusを逆順に切り替える          |
-| `e`             | 左側のSQL editorを開く                    |
-| `Cmd+Enter`     | editorのSQLを実行                         |
-| `r`             | 直近または選択中のクエリを再実行          |
-| `n` / `p`       | table結果の次 / 前ページ                  |
-| `y`             | 選択セルまたはtable名を `pbcopy` へコピー |
-| `/`             | 大文字小文字を区別しないフィルタ          |
-| `?`             | help                                      |
-| `q` / `Esc`     | 一つ前へ戻る。connectionsでは終了         |
-| `Ctrl-C`        | 実行中クエリを中断                        |
+| Key             | 動作                                       |
+| --------------- | ------------------------------------------ |
+| `j` / `k`, 矢印 | 上下移動                                   |
+| `h` / `l`       | catalogの折りたたみ／展開、resultの列移動  |
+| `g` / `G`       | 先頭 / 末尾                                |
+| `Enter`         | 接続・schemaを選んでqueryへ移動・table表示 |
+| `Tab`           | catalog → result → queryを巡回             |
+| `Shift+Tab`     | query内のfocusを逆順に切り替える           |
+| `e`             | 左側のSQL editorを開く                     |
+| `Cmd+Enter`     | editorのSQLを実行                          |
+| `r`             | 直近または選択中のクエリを再実行           |
+| `n` / `p`       | table結果の次 / 前ページ                   |
+| `y`             | 選択セルまたはtable名を `pbcopy` へコピー  |
+| `/`             | 大文字小文字を区別しないフィルタ           |
+| `?`             | help                                       |
+| `q` / `Esc`     | 一つ前へ戻る。connectionsでは終了          |
+| `Ctrl-C`        | 実行中クエリを中断                         |
 
 クエリ履歴は新しい順に最大500件を `~/.config/sqlclient/history.jsonl` へ0600で保存します。
 
 ### SQL editorとresult
 
-`e` を押すとInk内の分割画面へ移り、左側で複数行SQLを編集できます。右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → history、`Shift+Tab` で逆順にfocusを切り替えます。
+connectionsで接続先を選んで `Enter` を押すとcatalogへ移動します。schemaを選んで `Enter` を押すと、そのschemaを接続の既定値に設定してquery画面へ進みます。tableを確認したい場合だけ、catalogでschemaにカーソルを合わせて `l` または右矢印を押すとtable一覧を読み込みます。`h` または左矢印で折りたためます。
+
+query画面の左側で複数行SQLを編集でき、右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → history、`Shift+Tab` で逆順にfocusを切り替えます。
 
 ## 既知の制約
 

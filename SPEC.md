@@ -294,10 +294,13 @@ export interface Dialect {
 
 - 利用可能な接続の一覧。列は 接続名、engine、出自（mylogin / pg_service / env）、状態
 - 資格情報を解決できなかったものは理由付きでグレー表示し、選択できないようにする
+- 接続先で `Enter` を押すと接続し、catalog modeへ移動する
 
 **catalog**
 
 - 全幅でスキーマ → テーブルのツリーを表示する
+- schemaで `Enter` を押すと接続の既定schemaへ設定し、table一覧を読み込まずにquery modeへ移動する
+- schemaで `l` / 右矢印を押した場合だけtable一覧を読み込み、`h` / 左矢印で折りたたむ
 - テーブル上で `Enter` を押すとそのテーブルの先頭ページを取得して result モードへ
 
 **result**
@@ -311,6 +314,7 @@ export interface Dialect {
 
 - 左ペインにハイライト付きの複数行 SQL editor とクエリ履歴、右ペインに直近の result を表示する
 - `Cmd+Enter` で実行した後も query mode に留まり、SQL と結果を同時に確認できる
+- catalogでschemaを選択した後の主画面とし、`Esc` でcatalogへ戻れる
 
 **help**
 
@@ -319,9 +323,9 @@ export interface Dialect {
 ### キーバインド
 
 - `j` / `k` または矢印: 上下移動
-- `h` / `l`: resultの横スクロール
+- `h` / `l`: catalogの折りたたみ／展開、resultの横スクロール
 - `g` / `G`: 先頭 / 末尾
-- `Enter`: schema を展開／折りたたむ。table は選択して次の階層へ
+- `Enter`: connectionsでは接続してcatalogへ移動する。catalogではschemaを選択してqueryへ移動し、tableではresultを開く
 - `Tab`: catalog ⇄ result ⇄ query を巡回
 - `Shift+Tab`: query mode の editor / result / history を逆順に巡回
 - `e`: query mode の SQL editor に移動する

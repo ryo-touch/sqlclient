@@ -37,6 +37,7 @@ export interface AppState {
   running: boolean;
   lastUpdated?: Date;
   selectedSchema?: string;
+  expandedSchema?: string;
   showSystemSchemas: boolean;
   queryDraft: string;
   queryCursor: number;
@@ -86,8 +87,9 @@ export type Action =
   | { type: "returnedToConnections" }
   | { type: "catalogLoading"; message: string }
   | { type: "schemasLoaded"; schemas: SchemaRef[]; showSystem: boolean }
+  | { type: "schemaSelected"; schema: string }
   | { type: "tablesLoaded"; schema: string; tables: TableRef[] }
-  | { type: "schemaCollapsed" }
+  | { type: "schemaCollapsed"; selectedIndex: number }
   | { type: "queryStarted"; message: string }
   | {
       type: "querySucceeded";
@@ -180,6 +182,7 @@ export function reducer(state: AppState, action: Action): AppState {
         result: undefined,
         resultSource: undefined,
         selectedSchema: undefined,
+        expandedSchema: undefined,
         queryDraft: "",
         queryCursor: 0,
         queryFocus: "editor",
@@ -213,6 +216,7 @@ export function reducer(state: AppState, action: Action): AppState {
         result: undefined,
         resultSource: undefined,
         selectedSchema: undefined,
+        expandedSchema: undefined,
         queryDraft: "",
         queryCursor: 0,
         queryFocus: "editor",
@@ -231,9 +235,19 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         schemas: action.schemas,
         tables: [],
-        selectedSchema: undefined,
+        expandedSchema: undefined,
         selectedIndex: 0,
         showSystemSchemas: action.showSystem,
+        running: false,
+        message: undefined,
+        lastUpdated: new Date(),
+      };
+    case "schemaSelected":
+      return {
+        ...state,
+        tables: [],
+        selectedSchema: action.schema,
+        expandedSchema: undefined,
         running: false,
         message: undefined,
         lastUpdated: new Date(),
@@ -243,6 +257,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         tables: action.tables,
         selectedSchema: action.schema,
+        expandedSchema: action.schema,
         running: false,
         message: undefined,
         lastUpdated: new Date(),
@@ -251,7 +266,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         tables: [],
-        selectedSchema: undefined,
+        expandedSchema: undefined,
+        selectedIndex: action.selectedIndex,
         message: undefined,
       };
     case "queryStarted":

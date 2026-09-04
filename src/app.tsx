@@ -153,7 +153,7 @@ export function App() {
     const nodes: CatalogNode[] = [];
     for (const schema of state.schemas) {
       nodes.push({ kind: "schema", value: schema });
-      if (schema.schema === state.selectedSchema) {
+      if (schema.schema === state.expandedSchema) {
         nodes.push(
           ...state.tables.map((table) => ({
             kind: "table" as const,
@@ -170,7 +170,7 @@ export function App() {
             .toLocaleLowerCase()
             .includes(filter),
         );
-  }, [state.filter, state.schemas, state.selectedSchema, state.tables]);
+  }, [state.expandedSchema, state.filter, state.schemas, state.tables]);
 
   const showCatalogError = useCallback((error: unknown) => {
     dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
@@ -291,18 +291,13 @@ export function App() {
       const dialect = dialectFor(connected.info.engine);
       try {
         if (node.kind === "schema") {
-          if (node.value.schema === state.selectedSchema) {
-            dispatch({ type: "schemaCollapsed" });
-            return;
-          }
-          dispatch({ type: "catalogLoading", message: "Loading tables…" });
+          dispatch({ type: "catalogLoading", message: "Selecting schema…" });
           await selectSchema(connected, dialect, node.value.schema);
-          const tables = await listTables(
-            connected,
-            dialect,
-            node.value.schema,
-          );
-          dispatch({ type: "tablesLoaded", schema: node.value.schema, tables });
+          dispatch({ type: "schemaSelected", schema: node.value.schema });
+          dispatch({
+            type: "openQueryEditor",
+            initialSql: state.result?.sql ?? "",
+          });
         } else {
           await runTablePage(node.value.schema, node.value.table, 0);
         }
@@ -310,7 +305,24 @@ export function App() {
         showCatalogError(error);
       }
     },
-    [runTablePage, showCatalogError, state.selectedSchema],
+    [runTablePage, showCatalogError, state.result?.sql],
+  );
+
+  const expandCatalogSchema = useCallback(
+    async (node: Extract<CatalogNode, { kind: "schema" }>) => {
+      const connected = session.current;
+      if (!connected || node.value.schema === state.expandedSchema) return;
+      const dialect = dialectFor(connected.info.engine);
+      dispatch({ type: "catalogLoading", message: "Loading tables…" });
+      try {
+        await selectSchema(connected, dialect, node.value.schema);
+        const tables = await listTables(connected, dialect, node.value.schema);
+        dispatch({ type: "tablesLoaded", schema: node.value.schema, tables });
+      } catch (error) {
+        showCatalogError(error);
+      }
+    },
+    [showCatalogError, state.expandedSchema],
   );
 
   const reloadSchemas = useCallback(async (showSystem: boolean) => {
@@ -641,7 +653,20 @@ export function App() {
         dispatch({ type: "moveToBoundary", boundary: "first", itemCount });
       else if (input === "G")
         dispatch({ type: "moveToBoundary", boundary: "last", itemCount });
-      else if (input === "s") void reloadSchemas(!state.showSystemSchemas);
+      else if (input === "l" || key.rightArrow) {
+        const node = catalogNodes[state.selectedIndex];
+        if (node?.kind === "schema") void expandCatalogSchema(node);
+      } else if ((input === "h" || key.leftArrow) && state.expandedSchema) {
+        const schemaIndex = catalogNodes.findIndex(
+          (node) =>
+            node.kind === "schema" &&
+            node.value.schema === state.expandedSchema,
+        );
+        dispatch({
+          type: "schemaCollapsed",
+          selectedIndex: Math.max(0, schemaIndex),
+        });
+      } else if (input === "s") void reloadSchemas(!state.showSystemSchemas);
       else if (key.return) {
         const node = catalogNodes[state.selectedIndex];
         if (node) void openCatalogNode(node);
@@ -713,14 +738,10 @@ export function App() {
         current={state.current}
         schema={state.selectedSchema}
         table={
-          state.mode === "catalog"
-            ? state.resultSource?.kind === "table" &&
-              state.resultSource.schema === state.selectedSchema
-              ? state.resultSource.table
-              : undefined
-            : state.resultSource?.kind === "table"
-              ? state.resultSource.table
-              : undefined
+          state.resultSource?.kind === "table" &&
+          state.resultSource.schema === state.selectedSchema
+            ? state.resultSource.table
+            : undefined
         }
       />
       <Box marginTop={1} flexDirection="column">
@@ -736,6 +757,7 @@ export function App() {
             nodes={catalogNodes}
             selectedIndex={state.selectedIndex}
             selectedSchema={state.selectedSchema}
+            expandedSchema={state.expandedSchema}
             selectedTable={
               state.resultSource?.kind === "table" &&
               state.resultSource.schema === state.selectedSchema

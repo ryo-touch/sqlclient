@@ -36,7 +36,9 @@ login-pathはdatabaseを保持できないため、MySQL接続直後の既定dat
 
 ## editorとresultをInk内で並べる
 
-SQLを書きながら直前の結果を参照することを優先し、query modeを左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
+SQLを直接書く利用を主導線として、catalogでschemaを選択した後はtable一覧を取得せずquery modeへ移動する。table閲覧は削除せず、catalogで `l` / 右矢印を押したときだけ一覧を取得する補助導線として残す。
+
+query modeはSQLを書きながら直前の結果を参照できるよう、左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
 
 ## 表示量を端末サイズで制限する
 
