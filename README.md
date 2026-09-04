@@ -5,7 +5,7 @@ MySQL / PostgreSQLのread-onlyアカウントで使う、Ink製のターミナ�
 ## 必要なもの
 
 - macOS 26以降
-- Bun 1.4以降
+- Bun 1.3.14以降
 - MySQLを使う場合は `my_print_defaults` と `mysql_config_editor`
 
 ## インストールと起動
@@ -118,10 +118,10 @@ query画面の左側で複数行SQLを編集でき、右側には直近のresult
 
 2026-09-04に以下を確認しました。
 
-- macOS 26 / Bun 1.4.0 / Node 24.15.0
+- macOS 26 / Bun 1.3.14、1.4.0 / Node 24.15.0
 - `bun test`、TypeScript strictのtypecheck、Prettier check
 - `bun build --compile src/index.tsx --outfile sqlclient` でarm64 Mach-Oバイナリを生成し、connections一覧を表示
-- MySQL stagingのlogin-path経由で接続し、schema / table / column、table結果を表示
+- MySQL stagingのlogin-path経由で接続し、schema / table、table結果を表示
 - MySQL 8.4 DockerとPostgreSQL 17 Dockerを同時に一覧表示し、両方へ接続
 - 両Dockerの405行tableで200 / 200 / 5行のページングを確認
 - Ink内の左editorで複数行SQLを編集し、`Cmd+Enter` 後も右resultと同時表示されることを確認

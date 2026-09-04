@@ -21,7 +21,7 @@ MySQL / PostgreSQL のread-onlyアカウントへ接続し、スキーマとテ�
 ## 環境前提
 
 - macOS 26 以降
-- Bun 1.4 以降
+- Bun 1.3.14 以降
 - MySQL を使う場合: `my_print_defaults`（Homebrew の `mysql-client@8.4` に同梱）が使えること
 - PostgreSQL を使う場合: `~/.pg_service.conf` または環境変数で接続先が解決できること
 
