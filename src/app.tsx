@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import { Box, Text, useApp, useInput } from "ink";
 
 import { discoverConnections } from "./core/credentials.ts";
@@ -13,6 +20,9 @@ import { listColumns, listSchemas, listTables } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
 import { editQuery } from "./core/editor.ts";
+import { loadHistory, recordHistory } from "./core/history.ts";
+import { copyValue } from "./core/clipboard.ts";
+import type { HistoryEntry } from "./types.ts";
 import { initialState, reducer } from "./state.ts";
 import { ConnectionList } from "./ui/ConnectionList.tsx";
 import { FilterInput } from "./ui/FilterInput.tsx";
@@ -20,11 +30,15 @@ import { Header } from "./ui/Header.tsx";
 import { CatalogTree, type CatalogNode } from "./ui/CatalogTree.tsx";
 import { ResultGrid } from "./ui/ResultGrid.tsx";
 import { QueryPane } from "./ui/QueryPane.tsx";
+import { Help } from "./ui/Help.tsx";
+import { StatusBar } from "./ui/StatusBar.tsx";
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { exit, suspendTerminal } = useApp();
   const session = useRef<DatabaseSession | undefined>(undefined);
+  const historyWrite = useRef<Promise<void>>(Promise.resolve());
+  const [runningSeconds, setRunningSeconds] = useState(0);
 
   useEffect(() => {
     void discoverConnections()
@@ -38,6 +52,41 @@ export function App() {
         });
       });
   }, []);
+
+  useEffect(() => {
+    void loadHistory()
+      .then((loaded) => {
+        dispatch({
+          type: "historyLoaded",
+          history: loaded.entries,
+          warnings: loaded.warnings,
+        });
+      })
+      .catch(() => {
+        dispatch({
+          type: "addWarnings",
+          warnings: ["The query history could not be read"],
+        });
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!state.running) {
+      setRunningSeconds(0);
+      return;
+    }
+    const startedAt = performance.now();
+    const interval = setInterval(() => {
+      setRunningSeconds((performance.now() - startedAt) / 1_000);
+    }, 100);
+    return () => clearInterval(interval);
+  }, [state.running]);
+
+  useEffect(() => {
+    if (state.running || !state.message) return;
+    const timeout = setTimeout(() => dispatch({ type: "clearMessage" }), 3_000);
+    return () => clearTimeout(timeout);
+  }, [state.message, state.running]);
 
   useEffect(
     () => () => {
@@ -136,6 +185,23 @@ export function App() {
     dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
   }, []);
 
+  const rememberQuery = useCallback((entry: HistoryEntry) => {
+    dispatch({ type: "historyRecorded", entry });
+    historyWrite.current = historyWrite.current
+      .then(async () => {
+        const saved = await recordHistory(entry);
+        if (saved.warnings.length > 0) {
+          dispatch({ type: "addWarnings", warnings: saved.warnings });
+        }
+      })
+      .catch(() => {
+        dispatch({
+          type: "addWarnings",
+          warnings: ["The query history could not be saved"],
+        });
+      });
+  }, []);
+
   const runTablePage = useCallback(
     async (schema: string, table: string, offset: number) => {
       const connected = session.current;
@@ -148,6 +214,20 @@ export function App() {
         table,
         offset,
       );
+      const sql = outcome.ok
+        ? outcome.result.sql
+        : dialectFor(connected.info.engine).selectAll(
+            schema,
+            table,
+            PAGE_SIZE + 1,
+            Math.max(0, offset),
+          );
+      rememberQuery({
+        sql,
+        connection: connected.info.name,
+        executedAt: new Date(),
+        ok: outcome.ok,
+      });
       if (outcome.ok) {
         dispatch({
           type: "querySucceeded",
@@ -158,24 +238,57 @@ export function App() {
         dispatch({ type: "queryFailed", error: outcome.error });
       }
     },
-    [],
+    [rememberQuery],
   );
 
-  const runUserSql = useCallback(async (sql: string) => {
-    const connected = session.current;
-    if (!connected) return;
-    dispatch({ type: "queryStarted", message: "Running query…" });
-    const outcome = await executeUserQuery(connected, sql);
-    if (outcome.ok) {
-      dispatch({
-        type: "querySucceeded",
-        result: outcome.result,
-        source: { kind: "query" },
+  const runUserSql = useCallback(
+    async (sql: string) => {
+      const connected = session.current;
+      if (!connected) return;
+      dispatch({ type: "queryStarted", message: "Running query…" });
+      const outcome = await executeUserQuery(connected, sql);
+      rememberQuery({
+        sql,
+        connection: connected.info.name,
+        executedAt: new Date(),
+        ok: outcome.ok,
       });
-    } else {
-      dispatch({ type: "queryFailed", error: outcome.error });
+      if (outcome.ok) {
+        dispatch({
+          type: "querySucceeded",
+          result: outcome.result,
+          source: { kind: "query" },
+        });
+      } else {
+        dispatch({ type: "queryFailed", error: outcome.error });
+      }
+    },
+    [rememberQuery],
+  );
+
+  const copySelection = useCallback(async () => {
+    let value: unknown;
+    if (state.mode === "result") {
+      value =
+        state.result?.rows[state.selectedIndex]?.[state.selectedColumnIndex];
+    } else if (state.mode === "catalog" && state.catalogPane === "schemas") {
+      const node = catalogNodes[state.selectedIndex];
+      if (node?.kind === "table") value = node.value.table;
     }
-  }, []);
+    if (value === undefined) {
+      dispatch({ type: "showMessage", message: "Nothing selected to copy" });
+      return;
+    }
+    try {
+      await copyValue(value);
+      dispatch({ type: "showMessage", message: "Copied to clipboard" });
+    } catch {
+      dispatch({
+        type: "showError",
+        error: { message: "Clipboard copy failed" },
+      });
+    }
+  }, [catalogNodes, state]);
 
   const editAndRun = useCallback(async () => {
     try {
@@ -241,18 +354,43 @@ export function App() {
   }, []);
 
   useInput((input, key) => {
-    if (state.running && key.ctrl && input === "c") {
-      const cancelled = session.current?.cancelActive() ?? false;
-      dispatch({
-        type: "showMessage",
-        message: cancelled ? "Cancelling query…" : "Nothing to cancel",
-      });
+    if (key.ctrl && input === "c") {
+      if (state.running) {
+        const cancelled = session.current?.cancelActive() ?? false;
+        dispatch({
+          type: "showMessage",
+          message: cancelled ? "Cancelling query…" : "Nothing to cancel",
+        });
+      } else {
+        exit();
+      }
       return;
     }
     if (state.running) return;
 
-    if (input === "e" && state.current) {
+    if (state.mode === "help") {
+      if (input === "q" || key.escape || input === "?") {
+        dispatch({ type: "closeHelp" });
+      }
+      return;
+    }
+
+    if (!state.filterEditing && input === "?") {
+      dispatch({ type: "showHelp" });
+      return;
+    }
+
+    if (!state.filterEditing && input === "e" && state.current) {
       void editAndRun();
+      return;
+    }
+
+    if (
+      !state.filterEditing &&
+      input === "y" &&
+      (state.mode === "catalog" || state.mode === "result")
+    ) {
+      void copySelection();
       return;
     }
 
@@ -493,7 +631,9 @@ export function App() {
         readOnlyVerified={state.readOnlyVerified}
       />
       <Box marginTop={1} flexDirection="column">
-        {state.mode === "connections" ? (
+        {state.mode === "help" ? (
+          <Help />
+        ) : state.mode === "connections" ? (
           <ConnectionList
             connections={visibleConnections}
             selectedIndex={state.selectedIndex}
@@ -528,22 +668,16 @@ export function App() {
       {state.mode === "connections" || state.mode === "catalog" ? (
         <FilterInput filter={state.filter} editing={state.filterEditing} />
       ) : null}
-      {state.error ? <Text color="red">{state.error.message}</Text> : null}
-      {state.message ? <Text color="yellow">{state.message}</Text> : null}
-      {state.warnings.map((warning, index) => (
-        <Text color="yellow" key={`${warning}:${index}`}>
-          {warning}
-        </Text>
-      ))}
-      <Text dimColor>
-        {state.mode === "connections"
-          ? "j/k move · Enter connect · / filter · q quit"
-          : state.mode === "catalog"
-            ? "j/k move · h/l pane · Enter open · s system · Tab result · / filter · q back"
-            : state.mode === "result"
-              ? "j/k rows · h/l columns · n/p page · e edit · r rerun · Tab query · q catalog"
-              : "j/k history · Enter/r run · e edit · Tab catalog · q result"}
-      </Text>
+      {state.warnings.length > 0 ? (
+        <Text color="yellow">{state.warnings.at(-1)}</Text>
+      ) : null}
+      <StatusBar
+        mode={state.mode}
+        running={state.running}
+        runningSeconds={runningSeconds}
+        message={state.message}
+        error={state.error}
+      />
     </Box>
   );
 }

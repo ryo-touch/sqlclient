@@ -4,6 +4,7 @@ export interface ExecOptions {
   stdin?: "ignore" | "inherit";
   stdout?: "pipe" | "inherit";
   stderr?: "pipe" | "inherit";
+  input?: string;
 }
 
 export interface ExecResult {
@@ -36,7 +37,10 @@ export const exec: Exec = async (executable, args, options = {}) => {
     env: options.env
       ? { ...processEnv(), ...definedEnvironment(options.env) }
       : undefined,
-    stdin: options.stdin ?? "ignore",
+    stdin:
+      options.input === undefined
+        ? (options.stdin ?? "ignore")
+        : new Blob([options.input]),
     stdout: stdoutMode,
     stderr: stderrMode,
   });

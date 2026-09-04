@@ -66,4 +66,11 @@ describe("application reducer", () => {
       tables: [{ table: "items" }],
     });
   });
+
+  test("returns from help to the mode that opened it", () => {
+    const resultState = { ...initialState, mode: "result" as const };
+    const help = reducer(resultState, { type: "showHelp" });
+    expect(help.mode).toBe("help");
+    expect(reducer(help, { type: "closeHelp" }).mode).toBe("result");
+  });
 });

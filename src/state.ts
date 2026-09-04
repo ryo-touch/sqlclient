@@ -92,6 +92,10 @@ export type Action =
   | { type: "queryFailed"; error: QueryError }
   | { type: "moveResultColumn"; delta: number; columnCount: number }
   | { type: "setMode"; mode: Mode }
+  | { type: "historyLoaded"; history: HistoryEntry[]; warnings: string[] }
+  | { type: "historyRecorded"; entry: HistoryEntry }
+  | { type: "showHelp" }
+  | { type: "closeHelp" }
   | { type: "showError"; error: QueryError }
   | { type: "clearError" };
 
@@ -160,6 +164,13 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         current: action.connection,
         readOnlyVerified: true,
+        schemas: [],
+        tables: [],
+        columns: [],
+        result: undefined,
+        resultSource: undefined,
+        selectedSchema: undefined,
+        selectedTable: undefined,
         mode: "catalog",
         previousMode: "connections",
         selectedIndex: 0,
@@ -187,6 +198,13 @@ export function reducer(state: AppState, action: Action): AppState {
         previousMode: undefined,
         selectedIndex: 0,
         filter: "",
+        schemas: [],
+        tables: [],
+        columns: [],
+        result: undefined,
+        resultSource: undefined,
+        selectedSchema: undefined,
+        selectedTable: undefined,
         error: undefined,
         message: undefined,
       };
@@ -283,6 +301,25 @@ export function reducer(state: AppState, action: Action): AppState {
         filter: "",
         filterEditing: false,
         error: undefined,
+      };
+    case "historyLoaded":
+      return {
+        ...state,
+        history: action.history,
+        warnings: [...state.warnings, ...action.warnings],
+      };
+    case "historyRecorded":
+      return {
+        ...state,
+        history: [action.entry, ...state.history].slice(0, 500),
+      };
+    case "showHelp":
+      return { ...state, previousMode: state.mode, mode: "help" };
+    case "closeHelp":
+      return {
+        ...state,
+        mode: state.previousMode ?? "connections",
+        previousMode: undefined,
       };
     case "showError":
       return {

@@ -3,6 +3,7 @@ import { Box, Text, useStdout } from "ink";
 
 import { highlightSql, type SqlSegmentName } from "../core/highlight.ts";
 import type { Engine, HistoryEntry } from "../types.ts";
+import { formatDateTime } from "../util/format.ts";
 
 interface QueryPaneProps {
   engine: Engine;
@@ -95,6 +96,7 @@ export function QueryPane({
               inverse={index === selectedIndex}
             >
               {index === selectedIndex ? ">" : " "} {entry.ok ? "✓" : "✗"}{" "}
+              {formatDateTime(entry.executedAt)} · {entry.connection} ·{" "}
               {preview(entry.sql)}
             </Text>
           );

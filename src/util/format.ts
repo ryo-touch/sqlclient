@@ -3,7 +3,7 @@ export interface FormattedValue {
   isNull: boolean;
 }
 
-function localDateTime(value: Date): string {
+export function formatDateTime(value: Date): string {
   const component = (part: number): string => String(part).padStart(2, "0");
   return `${value.getFullYear()}-${component(value.getMonth() + 1)}-${component(value.getDate())} ${component(value.getHours())}:${component(value.getMinutes())}:${component(value.getSeconds())}`;
 }
@@ -22,7 +22,7 @@ export function formatValue(value: unknown): FormattedValue {
   if (value === null) return { text: "NULL", isNull: true };
   if (value === undefined) return { text: "undefined", isNull: false };
   if (value instanceof Date)
-    return { text: localDateTime(value), isNull: false };
+    return { text: formatDateTime(value), isNull: false };
   if (value instanceof Uint8Array) {
     return {
       text: `0x${Array.from(value, (byte) => byte.toString(16).padStart(2, "0")).join("")}`,
