@@ -116,4 +116,13 @@ describe("application reducer", () => {
       result: { rows: [[1]] },
     });
   });
+
+  test("changes the active query pane explicitly", () => {
+    const state = reducer(initialState, {
+      type: "setQueryFocus",
+      focus: "result",
+    });
+    expect(state.queryFocus).toBe("result");
+    expect(state.selectedIndex).toBe(0);
+  });
 });

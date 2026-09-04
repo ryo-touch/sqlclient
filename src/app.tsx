@@ -772,6 +772,7 @@ export function App() {
         runningSeconds={runningSeconds}
         message={state.message}
         error={state.error}
+        queryFocus={state.mode === "query" ? state.queryFocus : undefined}
       />
     </Box>
   );

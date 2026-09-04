@@ -43,18 +43,23 @@ function highlightedEditor(
   sql: string,
   cursor: number,
   engine: Engine,
+  active: boolean,
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
   let offset = 0;
   for (const [index, segment] of highlightSql(sql, engine).entries()) {
     const relativeCursor = cursor - offset;
     const color = colorFor(segment.name);
-    if (relativeCursor >= 0 && relativeCursor < segment.content.length) {
+    if (
+      active &&
+      relativeCursor >= 0 &&
+      relativeCursor < segment.content.length
+    ) {
       nodes.push(
         <Text color={color} key={`${index}:before`}>
           {segment.content.slice(0, relativeCursor)}
         </Text>,
-        <Text color={color} inverse key={`${index}:cursor`}>
+        <Text color="black" backgroundColor="cyan" key={`${index}:cursor`}>
           {segment.content[relativeCursor]}
         </Text>,
         <Text color={color} key={`${index}:after`}>
@@ -70,9 +75,9 @@ function highlightedEditor(
     }
     offset += segment.content.length;
   }
-  if (cursor === sql.length) {
+  if (active && cursor === sql.length) {
     nodes.push(
-      <Text inverse key="cursor:end">
+      <Text color="black" backgroundColor="cyan" key="cursor:end">
         {" "}
       </Text>,
     );
@@ -134,28 +139,39 @@ export function QueryWorkbench({
     <Box>
       <Box width="42%" flexDirection="column" paddingRight={1}>
         <Box
-          borderStyle="single"
+          borderStyle={focus === "editor" ? "double" : "single"}
           borderColor={focus === "editor" ? "cyan" : undefined}
           paddingX={1}
           flexDirection="column"
           minHeight={editorLines + 2}
         >
-          <Text bold>SQL · Cmd+Enter run</Text>
+          <Text bold color={focus === "editor" ? "cyan" : undefined}>
+            {focus === "editor" ? "▶ " : "  "}SQL · Cmd+Enter run
+          </Text>
           {editor.above > 0 ? (
             <Text dimColor>… {editor.above} lines above</Text>
           ) : null}
-          <Text>{highlightedEditor(editor.sql, editor.cursor, engine)}</Text>
+          <Text>
+            {highlightedEditor(
+              editor.sql,
+              editor.cursor,
+              engine,
+              focus === "editor",
+            )}
+          </Text>
           {editor.below > 0 ? (
             <Text dimColor>… {editor.below} lines below</Text>
           ) : null}
         </Box>
         <Box
-          borderStyle="single"
+          borderStyle={focus === "history" ? "double" : "single"}
           borderColor={focus === "history" ? "cyan" : undefined}
           paddingX={1}
           flexDirection="column"
         >
-          <Text bold>History</Text>
+          <Text bold color={focus === "history" ? "cyan" : undefined}>
+            {focus === "history" ? "▶ " : "  "}History
+          </Text>
           {visibleHistory.length === 0 ? (
             <Text dimColor>No history.</Text>
           ) : null}
@@ -174,12 +190,14 @@ export function QueryWorkbench({
       </Box>
       <Box
         width="58%"
-        borderStyle="single"
+        borderStyle={focus === "result" ? "double" : "single"}
         borderColor={focus === "result" ? "cyan" : undefined}
         paddingX={1}
         flexDirection="column"
       >
-        <Text bold>Result</Text>
+        <Text bold color={focus === "result" ? "cyan" : undefined}>
+          {focus === "result" ? "▶ " : "  "}Result
+        </Text>
         {result ? (
           <ResultGrid
             result={result}
