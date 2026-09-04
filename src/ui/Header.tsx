@@ -12,11 +12,9 @@ export function Header({ current, schema, readOnlyVerified }: HeaderProps) {
   const { stdout } = useStdout();
   const narrow = (stdout.columns ?? 80) < 90;
   return (
-    <Box
-      justifyContent={narrow ? undefined : "space-between"}
-      flexDirection={narrow ? "column" : "row"}
-    >
+    <Box flexDirection={narrow ? "column" : "row"}>
       <Text bold>sqlclient</Text>
+      {narrow ? null : <Text> · </Text>}
       {current ? (
         <Text dimColor={narrow}>
           {current.name} · {current.engine} {schema ? `· ${schema} ` : ""}
