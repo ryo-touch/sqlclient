@@ -3,8 +3,6 @@ import { describe, expect, test } from "bun:test";
 import {
   buildConnectionUrl,
   isLoopbackHost,
-  mysqlGrantsAreReadOnly,
-  readOnlyValueIsVerified,
   sanitizeDatabaseError,
 } from "../src/core/connection.ts";
 import type { ResolvedConnection } from "../src/types.ts";
@@ -32,49 +30,6 @@ describe("database connection URLs", () => {
     expect(isLoopbackHost("127.0.0.1")).toBeTrue();
     expect(isLoopbackHost("::1")).toBeTrue();
     expect(isLoopbackHost("db.example.test")).toBeFalse();
-  });
-});
-
-describe("read-only verification", () => {
-  test("recognizes MySQL and PostgreSQL confirmation values", () => {
-    expect(readOnlyValueIsVerified("mysql", [{ value: 1 }])).toBeTrue();
-    expect(readOnlyValueIsVerified("mysql", [{ value: 0 }])).toBeFalse();
-    expect(
-      readOnlyValueIsVerified("postgres", [
-        { default_transaction_read_only: "on" },
-      ]),
-    ).toBeTrue();
-    expect(
-      readOnlyValueIsVerified("postgres", [
-        { default_transaction_read_only: "off" },
-      ]),
-    ).toBeFalse();
-  });
-
-  test("accepts only an explicit MySQL read-only grant set", () => {
-    expect(
-      mysqlGrantsAreReadOnly([
-        {
-          grant:
-            "GRANT PROCESS, SELECT, SHOW DATABASES, REPLICATION CLIENT, SHOW VIEW ON *.* TO `reader`@`%`",
-        },
-      ]),
-    ).toBeTrue();
-    expect(
-      mysqlGrantsAreReadOnly([
-        { grant: "GRANT SELECT, INSERT ON `app`.* TO `reader`@`%`" },
-      ]),
-    ).toBeFalse();
-    expect(
-      mysqlGrantsAreReadOnly([
-        { grant: "GRANT SELECT ON `app`.* TO `reader`@`%` WITH GRANT OPTION" },
-      ]),
-    ).toBeFalse();
-    expect(
-      mysqlGrantsAreReadOnly([
-        { grant: "GRANT `read_role`@`%` TO `reader`@`%`" },
-      ]),
-    ).toBeFalse();
   });
 });
 

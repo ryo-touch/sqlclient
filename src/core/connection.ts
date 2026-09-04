@@ -11,7 +11,6 @@ type ConnectionId = number;
 
 export interface DatabaseSession {
   readonly info: ConnectionSummary;
-  readonly readOnlyVerified: true;
   executeCatalog<T>(statement: string, values?: readonly unknown[]): Query<T>;
   executeUser<T>(statement: string): Query<T>;
   toQueryError(error: unknown): QueryError;
@@ -88,49 +87,6 @@ export function sanitizeDatabaseError(
   return { message, code: errorCode(error) };
 }
 
-export function readOnlyValueIsVerified(
-  engine: ResolvedConnection["engine"],
-  rows: unknown,
-): boolean {
-  if (!Array.isArray(rows) || rows.length === 0) return false;
-  const row = rows[0];
-  if (typeof row !== "object" || row === null) return false;
-  const value = Object.values(row)[0];
-  return engine === "mysql" ? value === 1 || value === 1n : value === "on";
-}
-
-const mysqlReadOnlyPrivileges = new Set([
-  "PROCESS",
-  "REPLICATION CLIENT",
-  "SELECT",
-  "SHOW DATABASES",
-  "SHOW VIEW",
-  "USAGE",
-]);
-
-export function mysqlGrantsAreReadOnly(rows: unknown): boolean {
-  if (!Array.isArray(rows) || rows.length === 0) return false;
-  const privileges: string[] = [];
-
-  for (const row of rows) {
-    if (typeof row !== "object" || row === null) return false;
-    const grant = Object.values(row).find(
-      (value): value is string => typeof value === "string",
-    );
-    if (!grant || /\bWITH\s+GRANT\s+OPTION\b/iu.test(grant)) return false;
-    const match = /^GRANT\s+(.+?)\s+ON\s+.+?\s+TO\s+/iu.exec(grant);
-    if (!match?.[1]) return false;
-    privileges.push(
-      ...match[1].split(",").map((privilege) => privilege.trim().toUpperCase()),
-    );
-  }
-
-  return (
-    privileges.includes("SELECT") &&
-    privileges.every((privilege) => mysqlReadOnlyPrivileges.has(privilege))
-  );
-}
-
 function connectionId(rows: unknown): ConnectionId | undefined {
   if (!Array.isArray(rows) || rows.length === 0) return undefined;
   const row = rows[0];
@@ -164,28 +120,9 @@ export async function connectDatabase(
   try {
     reserved = await pool.reserve({ signal: AbortSignal.timeout(30_000) });
     if (connection.engine === "mysql") {
-      await reserved`SET SESSION TRANSACTION READ ONLY`;
       await reserved`SET SESSION max_execution_time = 30000`;
     } else {
-      await reserved`SET default_transaction_read_only = on`;
       await reserved`SET statement_timeout = '30s'`;
-    }
-    const verification =
-      connection.engine === "mysql"
-        ? await reserved`SELECT @@transaction_read_only`
-        : await reserved`SHOW default_transaction_read_only`;
-    let readOnlyVerified = readOnlyValueIsVerified(
-      connection.engine,
-      verification,
-    );
-    if (!readOnlyVerified && connection.engine === "mysql") {
-      // Some Aurora accounts enforce read-only through grants while ignoring the
-      // session variable. Accept only an explicit, fully understood read-only set.
-      const grants = await reserved`SHOW GRANTS FOR CURRENT_USER()`;
-      readOnlyVerified = mysqlGrantsAreReadOnly(grants);
-    }
-    if (!readOnlyVerified) {
-      throw new Error("The server did not confirm read-only mode");
     }
     const identifier =
       connection.engine === "mysql"
@@ -240,7 +177,6 @@ export async function connectDatabase(
 
   return {
     info: summary(connection),
-    readOnlyVerified: true,
     // Catalog SQL contains only identifiers processed by quoteIdent; values stay bound.
     executeCatalog: <T>(statement: string, values: readonly unknown[] = []) =>
       track(client.unsafe<T>(statement, [...values])),

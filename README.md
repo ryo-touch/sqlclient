@@ -1,6 +1,6 @@
 # sqlclient
 
-MySQL / PostgreSQLへ参照専用で接続する、Ink製のターミナルSQLクライアントです。接続情報は独自管理せず、MySQLのlogin-pathとPostgreSQLのservice/password fileを読みます。
+MySQL / PostgreSQLのread-onlyアカウントで使う、Ink製のターミナルSQLクライアントです。接続情報は独自管理せず、MySQLのlogin-pathとPostgreSQLのservice/password fileを読みます。
 
 ## 必要なもの
 
@@ -39,7 +39,7 @@ mysql_config_editor set \
 
 検証用に別ファイルを使う場合は `MYSQL_TEST_LOGIN_FILE` を指定できます。アプリが `.mylogin.cnf` を作成・変更することはありません。
 
-接続名による環境制限はありません。production用login-pathも一覧から選択してSQLを実行できます。接続先の安全性は名前ではなく、接続直後に確認するserver-side read-only設定で担保します。
+接続名による環境制限はありません。production用login-pathも一覧に表示されるため、必ずDB側でread-only権限を設定した専用アカウントを使ってください。
 
 ### PostgreSQL
 
@@ -65,11 +65,11 @@ chmod 600 ~/.pgpass
 
 標準の `PGSERVICEFILE` / `PGPASSFILE` で読み取り先を変更できます。service fileが無い場合は `PGHOST` / `PGPORT` / `PGUSER` / `PGDATABASE` から1接続を組み立てます。`PGPASSWORD` は読みません。
 
-## 参照専用の保証
+## 書き込み防止の前提
 
-接続直後にDBサーバのセッションをread-onlyへ変更し、設定値を再取得して確認できた接続だけを利用します。MySQLでsession設定が反映されない場合に限り、現在ユーザーのgrantが既知の参照系権限だけであることを `SHOW GRANTS` で確認します。未知のgrant、role、書き込み権限、grant optionが含まれる接続は拒否します。Headerに `[read-only]` が表示されていない接続ではクエリを実行できません。
+このアプリはSQLを解析・制限せず、入力されたSQLをそのままDBへ送ります。書き込み防止はDBアカウントの権限で行う設計です。MySQLのlogin-pathとPostgreSQLのserviceには、対象schema/tableへの参照権限だけを持つ専用アカウントを設定してください。
 
-クライアント側でSQL文字列を許可リスト判定しているわけではありません。Ink内のSQL editorから任意SQLを送れますが、書き込みはサーバのread-onlyセッションによって拒否されます。
+書き込み権限を持つアカウントで接続した場合、`INSERT` / `UPDATE` / `DELETE` / DDLも実行されます。アプリ側の表示や接続名は安全性の保証にはなりません。
 
 catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定schemaにも設定します。以降は `SELECT * FROM table_name` のようにschema名を省略したSQLも、選択中のschemaに対して実行されます。
 
@@ -112,20 +112,19 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 - Bun.SQLは空結果のcolumn metadataを公開しないため、0行の任意SQLではcolumn名を表示できません。重複したcolumn名もオブジェクト結果で最後の値が優先されます。
 - MySQL 8.4 Dockerの `caching_sha2_password` はBun 1.4.0とのローカル非TLS接続で認証できなかったため、下記の動作確認では検証用ユーザーだけ `mysql_native_password` を使用しました。非loopback接続でRSA公開鍵取得を自動許可することはありません。
 
-## 動作確認済み
+## 動作確認
 
 2026-09-04に以下を確認しました。
 
 - macOS 26 / Bun 1.4.0 / Node 24.15.0
 - `bun test`、TypeScript strictのtypecheck、Prettier check
 - `bun build --compile src/index.tsx --outfile sqlclient` でarm64 Mach-Oバイナリを生成し、connections一覧を表示
-- MySQL stagingのlogin-path経由で接続し、read-onlyバッジ、schema / table / column、table結果を表示
+- MySQL stagingのlogin-path経由で接続し、schema / table / column、table結果を表示
 - MySQL 8.4 DockerとPostgreSQL 17 Dockerを同時に一覧表示し、両方へ接続
-- 両Dockerで永続書き込みがread-onlyエラーになることを確認
 - 両Dockerの405行tableで200 / 200 / 5行のページングを確認
 - Ink内の左editorで複数行SQLを編集し、`Cmd+Enter` 後も右resultと同時表示されることを確認
 - 両Dockerで実行中クエリのserver-side cancelを確認
 - `NULL` がdim表示され、文字列 `"NULL"` が通常表示されることを確認
 - 接続情報のpasswordがconnections、Header、catalog、result、query、errorのいずれにも表示されないことを確認
 
-検証用Dockerコンテナと一時資格情報ファイルは確認後に削除しています。production DBではgrant・read-only確認とschema参照だけを行い、書き込みやtable dataの取得は行っていません。
+検証用Dockerコンテナと一時資格情報ファイルは確認後に削除しています。production DBではschema参照だけを行い、書き込みやtable dataの取得は行っていません。

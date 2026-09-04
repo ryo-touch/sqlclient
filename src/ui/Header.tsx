@@ -6,15 +6,9 @@ interface HeaderProps {
   current?: ConnectionSummary;
   schema?: string;
   table?: string;
-  readOnlyVerified: boolean;
 }
 
-export function Header({
-  current,
-  schema,
-  table,
-  readOnlyVerified,
-}: HeaderProps) {
+export function Header({ current, schema, table }: HeaderProps) {
   const { stdout } = useStdout();
   const narrow = (stdout.columns ?? 80) < 90;
   return (
@@ -38,7 +32,6 @@ export function Header({
               <Text dimColor>›</Text> <Text bold>{table}</Text>
             </Text>
           ) : null}
-          {readOnlyVerified ? <Text color="green"> ✓ read-only</Text> : null}
         </Text>
       ) : (
         <Text dimColor>not connected</Text>

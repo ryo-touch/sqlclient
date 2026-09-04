@@ -38,7 +38,7 @@ describe("application reducer", () => {
     });
   });
 
-  test("loads catalog levels without losing the verified connection", () => {
+  test("loads catalog levels without losing the active connection", () => {
     const connected = reducer(initialState, {
       type: "connectionSucceeded",
       connection: {
@@ -61,7 +61,6 @@ describe("application reducer", () => {
       tables: [{ schema: "public", table: "items", type: "table" }],
     });
     expect(tables).toMatchObject({
-      readOnlyVerified: true,
       selectedSchema: "public",
       tables: [{ table: "items" }],
     });

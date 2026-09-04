@@ -57,8 +57,6 @@ ORDER BY columns.ordinal_position`,
   selectSchema: (schema) => `SET search_path TO ${quotePostgresIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quotePostgresIdent(schema)}.${quotePostgresIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
-  readOnlyStatements: () => ["SET default_transaction_read_only = on"],
-  verifyReadOnly: () => "SHOW default_transaction_read_only",
   tableParameters: (schema) => [schema],
   columnParameters: (schema, table) => [schema, table],
 };

@@ -15,8 +15,6 @@ export interface Dialect {
     limit: number,
     offset: number,
   ): string;
-  readOnlyStatements(): string[];
-  verifyReadOnly(): string;
   tableParameters(schema: string): readonly unknown[];
   columnParameters(schema: string, table: string): readonly unknown[];
 }

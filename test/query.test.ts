@@ -27,7 +27,6 @@ function fakeSession(result: unknown, delayMs = 0): DatabaseSession {
       port: 5432,
       user: "reader",
     },
-    readOnlyVerified: true,
     executeCatalog: () => query() as never,
     executeUser: () => query() as never,
     toQueryError: (error) => ({

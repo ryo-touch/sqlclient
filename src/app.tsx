@@ -750,7 +750,6 @@ export function App() {
               ? state.resultSource.table
               : undefined
         }
-        readOnlyVerified={state.readOnlyVerified}
       />
       <Box marginTop={1} flexDirection="column">
         {state.mode === "help" ? (

@@ -21,7 +21,6 @@ import {
 export interface AppState {
   connections: ConnectionListItem[];
   current?: ConnectionSummary;
-  readOnlyVerified: boolean;
   schemas: SchemaRef[];
   tables: TableRef[];
   columns: ColumnRef[];
@@ -52,7 +51,6 @@ export interface AppState {
 
 export const initialState: AppState = {
   connections: [],
-  readOnlyVerified: false,
   schemas: [],
   tables: [],
   columns: [],
@@ -185,7 +183,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         current: action.connection,
-        readOnlyVerified: true,
         schemas: [],
         tables: [],
         columns: [],
@@ -209,7 +206,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         current: undefined,
-        readOnlyVerified: false,
         running: false,
         message: undefined,
         error: action.error,
@@ -218,7 +214,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         current: undefined,
-        readOnlyVerified: false,
         mode: "connections",
         previousMode: undefined,
         selectedIndex: 0,

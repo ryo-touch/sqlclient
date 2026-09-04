@@ -6,13 +6,15 @@
 
 MySQL名の列挙には、passwordを常にマスクする `mysql_config_editor print --all` を使う。暗号化ファイルの形式へ依存せず、MySQL公式ツールを信頼境界にできるためである。
 
+## 書き込み防止はDB権限に委ねる
+
+SQL文字列の許可リストやsessionの既定値は、任意SQLから回避できるため安全境界として扱わない。アプリは入力されたSQLを変更せず、書き込み防止は専用のread-only DBアカウントに委ねる。これにより、アプリが保証できない状態をread-only確認済みとして表示しない。
+
+staging / productionのような接続名は認可情報として扱わない。接続先の選択肢を名前で制限しない代わりに、利用者がcredential storeへ書き込み権限のないアカウントだけを登録することを前提とする。
+
 ## 物理connectionをreserveする
 
-read-onlyはconnection pool全体ではなくserver sessionの属性である。設定したconnectionと実クエリのconnectionがずれることを防ぐため、選択中はpoolからreserveした1本だけを使う。確認前の失敗や切断後はそのsessionを再利用しない。
-
-staging / productionのような接続名は認可情報として扱わない。Auroraを含む接続先が返すread-only状態を正本とし、確認できたsessionだけを利用する。これによりproduction用login-pathも、DB側の権限とread-only設定を保ったまま使用できる。
-
-Aurora MySQLでは、参照専用アカウントでもsessionの `transaction_read_only` が `0` から変わらない構成がある。この場合だけ `SHOW GRANTS FOR CURRENT_USER()` を確認し、`SELECT` を必須とした既知の参照系権限だけで構成されていれば、アカウント権限によるserver-side強制として受け入れる。grant文字列を理解できない場合や書き込みにつながる権限があればfail closedにする。
+schema選択、クエリ実行、cancel対象のbackend IDを同じserver sessionへ結び付けるため、選択中はpoolからreserveした1本だけを使う。接続確認前の失敗や切断後はそのsessionを再利用しない。
 
 ## cancelは別connectionからserverへ送る
 

@@ -14,7 +14,6 @@ function sessionReturning(rows: unknown): DatabaseSession {
       port: 3306,
       user: "reader",
     },
-    readOnlyVerified: true,
     executeCatalog: () => Promise.resolve(rows) as never,
     executeUser: () => Promise.resolve([]) as never,
     toQueryError: () => ({ message: "failed" }),

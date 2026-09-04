@@ -1,7 +1,7 @@
 {
   "name": "sqlclient",
   "version": "0.1.0",
-  "description": "A read-only terminal SQL client for MySQL and PostgreSQL",
+  "description": "A terminal SQL client for MySQL and PostgreSQL read-only accounts",
   "module": "src/index.tsx",
   "type": "module",
   "private": true,

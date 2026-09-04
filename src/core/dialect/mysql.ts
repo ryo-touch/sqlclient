@@ -39,8 +39,6 @@ ORDER BY ordinal_position`,
   selectSchema: (schema) => `USE ${quoteMysqlIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quoteMysqlIdent(schema)}.${quoteMysqlIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
-  readOnlyStatements: () => ["SET SESSION TRANSACTION READ ONLY"],
-  verifyReadOnly: () => "SELECT @@transaction_read_only",
   tableParameters: (schema) => [schema],
   columnParameters: (schema, table) => [schema, table],
 };
