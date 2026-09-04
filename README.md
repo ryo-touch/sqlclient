@@ -128,3 +128,7 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 - 接続情報のpasswordがconnections、Header、catalog、result、query、errorのいずれにも表示されないことを確認
 
 検証用Dockerコンテナと一時資格情報ファイルは確認後に削除しています。production DBではschema参照だけを行い、書き込みやtable dataの取得は行っていません。
+
+## ライセンス
+
+[MIT License](LICENSE)

@@ -2,6 +2,7 @@
   "name": "sqlclient",
   "version": "0.1.0",
   "description": "A terminal SQL client for MySQL and PostgreSQL read-only accounts",
+  "license": "MIT",
   "module": "src/index.tsx",
   "type": "module",
   "private": true,
