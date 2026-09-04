@@ -4,10 +4,11 @@ import type { ConnectionSummary } from "../types.ts";
 
 interface HeaderProps {
   current?: ConnectionSummary;
+  schema?: string;
   readOnlyVerified: boolean;
 }
 
-export function Header({ current, readOnlyVerified }: HeaderProps) {
+export function Header({ current, schema, readOnlyVerified }: HeaderProps) {
   const { stdout } = useStdout();
   const narrow = (stdout.columns ?? 80) < 90;
   return (
@@ -18,7 +19,7 @@ export function Header({ current, readOnlyVerified }: HeaderProps) {
       <Text bold>sqlclient</Text>
       {current ? (
         <Text dimColor={narrow}>
-          {current.name} · {current.engine}{" "}
+          {current.name} · {current.engine} {schema ? `· ${schema} ` : ""}
           {readOnlyVerified ? <Text color="green">[read-only]</Text> : null}
         </Text>
       ) : (

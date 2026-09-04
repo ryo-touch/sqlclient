@@ -717,6 +717,7 @@ export function App() {
     <Box flexDirection="column" paddingX={1}>
       <Header
         current={state.current}
+        schema={state.selectedSchema}
         readOnlyVerified={state.readOnlyVerified}
       />
       <Box marginTop={1} flexDirection="column">

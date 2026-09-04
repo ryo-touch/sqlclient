@@ -73,6 +73,8 @@ chmod 600 ~/.pgpass
 
 catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定schemaにも設定します。以降は `SELECT * FROM table_name` のようにschema名を省略したSQLも、選択中のschemaに対して実行されます。
 
+schemaが `▾` で展開され、Headerにschema名が表示されていれば選択済みです。その状態でcatalogのどこからでも `e` を押すとSQL workbenchへ移動します。
+
 ## キーバインド
 
 | Key             | 動作                                      |
