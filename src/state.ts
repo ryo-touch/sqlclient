@@ -1,5 +1,4 @@
 import type {
-  ColumnRef,
   ConnectionListItem,
   ConnectionSummary,
   HistoryEntry,
@@ -23,7 +22,6 @@ export interface AppState {
   current?: ConnectionSummary;
   schemas: SchemaRef[];
   tables: TableRef[];
-  columns: ColumnRef[];
   result?: ResultSet;
   error?: QueryError;
   history: HistoryEntry[];
@@ -39,8 +37,6 @@ export interface AppState {
   running: boolean;
   lastUpdated?: Date;
   selectedSchema?: string;
-  selectedTable?: string;
-  catalogPane: "schemas" | "tables";
   showSystemSchemas: boolean;
   queryDraft: string;
   queryCursor: number;
@@ -53,7 +49,6 @@ export const initialState: AppState = {
   connections: [],
   schemas: [],
   tables: [],
-  columns: [],
   history: [],
   warnings: [],
   mode: "connections",
@@ -63,7 +58,6 @@ export const initialState: AppState = {
   filter: "",
   filterEditing: false,
   running: false,
-  catalogPane: "schemas",
   showSystemSchemas: false,
   queryDraft: "",
   queryCursor: 0,
@@ -94,8 +88,6 @@ export type Action =
   | { type: "schemasLoaded"; schemas: SchemaRef[]; showSystem: boolean }
   | { type: "tablesLoaded"; schema: string; tables: TableRef[] }
   | { type: "schemaCollapsed" }
-  | { type: "columnsLoaded"; table: string; columns: ColumnRef[] }
-  | { type: "setCatalogPane"; pane: "schemas" | "tables" }
   | { type: "queryStarted"; message: string }
   | {
       type: "querySucceeded";
@@ -185,11 +177,9 @@ export function reducer(state: AppState, action: Action): AppState {
         current: action.connection,
         schemas: [],
         tables: [],
-        columns: [],
         result: undefined,
         resultSource: undefined,
         selectedSchema: undefined,
-        selectedTable: undefined,
         queryDraft: "",
         queryCursor: 0,
         queryFocus: "editor",
@@ -220,11 +210,9 @@ export function reducer(state: AppState, action: Action): AppState {
         filter: "",
         schemas: [],
         tables: [],
-        columns: [],
         result: undefined,
         resultSource: undefined,
         selectedSchema: undefined,
-        selectedTable: undefined,
         queryDraft: "",
         queryCursor: 0,
         queryFocus: "editor",
@@ -243,9 +231,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         schemas: action.schemas,
         tables: [],
-        columns: [],
         selectedSchema: undefined,
-        selectedTable: undefined,
         selectedIndex: 0,
         showSystemSchemas: action.showSystem,
         running: false,
@@ -256,9 +242,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         tables: action.tables,
-        columns: [],
         selectedSchema: action.schema,
-        selectedTable: undefined,
         running: false,
         message: undefined,
         lastUpdated: new Date(),
@@ -267,22 +251,9 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         tables: [],
-        columns: [],
         selectedSchema: undefined,
-        selectedTable: undefined,
         message: undefined,
       };
-    case "columnsLoaded":
-      return {
-        ...state,
-        columns: action.columns,
-        selectedTable: action.table,
-        running: false,
-        message: undefined,
-        lastUpdated: new Date(),
-      };
-    case "setCatalogPane":
-      return { ...state, catalogPane: action.pane, selectedIndex: 0 };
     case "queryStarted":
       return {
         ...state,

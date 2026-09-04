@@ -1,6 +1,6 @@
 import type { DatabaseSession } from "./connection.ts";
 import type { Dialect } from "./dialect/index.ts";
-import type { ColumnRef, SchemaRef, TableRef } from "../types.ts";
+import type { SchemaRef, TableRef } from "../types.ts";
 
 function records(
   value: unknown,
@@ -48,16 +48,6 @@ function tableType(value: unknown): TableRef["type"] {
   return "other";
 }
 
-function booleanValue(value: unknown): boolean {
-  return (
-    value === true ||
-    value === 1 ||
-    value === 1n ||
-    value === "1" ||
-    value === "YES"
-  );
-}
-
 export async function listSchemas(
   session: DatabaseSession,
   dialect: Dialect,
@@ -103,33 +93,4 @@ export async function selectSchema(
   schema: string,
 ): Promise<void> {
   await session.executeCatalog(dialect.selectSchema(schema));
-}
-
-export async function listColumns(
-  session: DatabaseSession,
-  dialect: Dialect,
-  schema: string,
-  table: string,
-): Promise<ColumnRef[]> {
-  const result: unknown = await session.executeCatalog(
-    dialect.listColumns(schema, table),
-    dialect.columnParameters(schema, table),
-  );
-  return records(result).flatMap((row) => {
-    const name = text(field(row, "column_name"));
-    const dataType = text(field(row, "data_type"));
-    if (!name || !dataType) return [];
-    const defaultValue = field(row, "column_default");
-    return [
-      {
-        name,
-        dataType,
-        nullable: booleanValue(field(row, "is_nullable")),
-        isPrimaryKey: booleanValue(field(row, "is_primary_key")),
-        ...(defaultValue === null || defaultValue === undefined
-          ? {}
-          : { defaultValue: String(defaultValue) }),
-      },
-    ];
-  });
 }

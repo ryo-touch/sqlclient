@@ -26,19 +26,8 @@ SELECT
 FROM information_schema.tables
 WHERE table_schema = ?
 ORDER BY table_name`,
-  listColumns: () => `
-SELECT
-  column_name,
-  data_type,
-  is_nullable,
-  column_key = 'PRI' AS is_primary_key,
-  column_default
-FROM information_schema.columns
-WHERE table_schema = ? AND table_name = ?
-ORDER BY ordinal_position`,
   selectSchema: (schema) => `USE ${quoteMysqlIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quoteMysqlIdent(schema)}.${quoteMysqlIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
   tableParameters: (schema) => [schema],
-  columnParameters: (schema, table) => [schema, table],
 };

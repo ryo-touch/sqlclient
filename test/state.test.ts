@@ -66,9 +66,7 @@ describe("application reducer", () => {
     });
     expect(reducer(tables, { type: "schemaCollapsed" })).toMatchObject({
       selectedSchema: undefined,
-      selectedTable: undefined,
       tables: [],
-      columns: [],
     });
   });
 

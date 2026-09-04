@@ -31,32 +31,8 @@ LEFT JOIN pg_catalog.pg_class AS classes
   AND classes.relname = tables.table_name
 WHERE tables.table_schema = $1
 ORDER BY tables.table_name`,
-  listColumns: () => `
-SELECT
-  columns.column_name,
-  columns.data_type,
-  columns.is_nullable,
-  EXISTS (
-    SELECT 1
-    FROM pg_catalog.pg_class AS classes
-    JOIN pg_catalog.pg_namespace AS namespaces
-      ON namespaces.oid = classes.relnamespace
-    JOIN pg_catalog.pg_index AS indexes
-      ON indexes.indrelid = classes.oid AND indexes.indisprimary
-    JOIN pg_catalog.pg_attribute AS attributes
-      ON attributes.attrelid = classes.oid
-      AND attributes.attnum = ANY(indexes.indkey)
-    WHERE namespaces.nspname = columns.table_schema
-      AND classes.relname = columns.table_name
-      AND attributes.attname = columns.column_name
-  ) AS is_primary_key,
-  columns.column_default
-FROM information_schema.columns AS columns
-WHERE columns.table_schema = $1 AND columns.table_name = $2
-ORDER BY columns.ordinal_position`,
   selectSchema: (schema) => `SET search_path TO ${quotePostgresIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quotePostgresIdent(schema)}.${quotePostgresIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
   tableParameters: (schema) => [schema],
-  columnParameters: (schema, table) => [schema, table],
 };

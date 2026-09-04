@@ -16,12 +16,7 @@ import {
   sanitizeDatabaseError,
   type DatabaseSession,
 } from "./core/connection.ts";
-import {
-  listColumns,
-  listSchemas,
-  listTables,
-  selectSchema,
-} from "./core/catalog.ts";
+import { listSchemas, listTables, selectSchema } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
 import { cycleQueryFocus } from "./core/query-editor.ts";
@@ -177,15 +172,6 @@ export function App() {
         );
   }, [state.filter, state.schemas, state.selectedSchema, state.tables]);
 
-  const visibleColumns = useMemo(() => {
-    const filter = state.filter.toLocaleLowerCase();
-    return filter === ""
-      ? state.columns
-      : state.columns.filter((column) =>
-          column.name.toLocaleLowerCase().includes(filter),
-        );
-  }, [state.columns, state.filter]);
-
   const showCatalogError = useCallback((error: unknown) => {
     dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
   }, []);
@@ -279,7 +265,7 @@ export function App() {
     ) {
       value =
         state.result?.rows[state.selectedIndex]?.[state.selectedColumnIndex];
-    } else if (state.mode === "catalog" && state.catalogPane === "schemas") {
+    } else if (state.mode === "catalog") {
       const node = catalogNodes[state.selectedIndex];
       if (node?.kind === "table") value = node.value.table;
     }
@@ -318,14 +304,6 @@ export function App() {
           );
           dispatch({ type: "tablesLoaded", schema: node.value.schema, tables });
         } else {
-          dispatch({ type: "catalogLoading", message: "Loading columns…" });
-          const columns = await listColumns(
-            connected,
-            dialect,
-            node.value.schema,
-            node.value.table,
-          );
-          dispatch({ type: "columnsLoaded", table: node.value.table, columns });
           await runTablePage(node.value.schema, node.value.table, 0);
         }
       } catch (error) {
@@ -471,9 +449,7 @@ export function App() {
               ? state.queryFocus === "result"
                 ? (state.result?.rows.length ?? 0)
                 : state.history.length
-              : state.catalogPane === "schemas"
-                ? catalogNodes.length
-                : visibleColumns.length;
+              : catalogNodes.length;
       for (const command of movementCommands) {
         if (command === "j" || command === "k") {
           dispatch({
@@ -646,10 +622,7 @@ export function App() {
     }
 
     if (state.mode === "catalog") {
-      const itemCount =
-        state.catalogPane === "schemas"
-          ? catalogNodes.length
-          : visibleColumns.length;
+      const itemCount = catalogNodes.length;
       if (state.filterEditing) {
         if (key.escape) dispatch({ type: "clearFilter" });
         else if (key.return) dispatch({ type: "finishFilter" });
@@ -668,12 +641,8 @@ export function App() {
         dispatch({ type: "moveToBoundary", boundary: "first", itemCount });
       else if (input === "G")
         dispatch({ type: "moveToBoundary", boundary: "last", itemCount });
-      else if (input === "h")
-        dispatch({ type: "setCatalogPane", pane: "schemas" });
-      else if (input === "l")
-        dispatch({ type: "setCatalogPane", pane: "tables" });
       else if (input === "s") void reloadSchemas(!state.showSystemSchemas);
-      else if (key.return && state.catalogPane === "schemas") {
+      else if (key.return) {
         const node = catalogNodes[state.selectedIndex];
         if (node) void openCatalogNode(node);
       } else if (input === "q" || key.escape) {
@@ -745,7 +714,10 @@ export function App() {
         schema={state.selectedSchema}
         table={
           state.mode === "catalog"
-            ? state.selectedTable
+            ? state.resultSource?.kind === "table" &&
+              state.resultSource.schema === state.selectedSchema
+              ? state.resultSource.table
+              : undefined
             : state.resultSource?.kind === "table"
               ? state.resultSource.table
               : undefined
@@ -762,11 +734,14 @@ export function App() {
         ) : state.mode === "catalog" ? (
           <CatalogTree
             nodes={catalogNodes}
-            columns={visibleColumns}
             selectedIndex={state.selectedIndex}
-            activePane={state.catalogPane}
             selectedSchema={state.selectedSchema}
-            selectedTable={state.selectedTable}
+            selectedTable={
+              state.resultSource?.kind === "table" &&
+              state.resultSource.schema === state.selectedSchema
+                ? state.resultSource.table
+                : undefined
+            }
           />
         ) : state.mode === "result" && state.result ? (
           <ResultGrid

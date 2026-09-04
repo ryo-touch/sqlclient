@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { listColumns, listTables } from "../src/core/catalog.ts";
+import { listTables } from "../src/core/catalog.ts";
 import type { DatabaseSession } from "../src/core/connection.ts";
 import { mysqlDialect } from "../src/core/dialect/mysql.ts";
 
@@ -43,31 +43,6 @@ describe("catalog normalization", () => {
         table: "items",
         type: "table",
         approxRows: 12,
-      },
-    ]);
-  });
-
-  test("normalizes nullable and primary-key flags", async () => {
-    const columns = await listColumns(
-      sessionReturning([
-        {
-          COLUMN_NAME: "id",
-          DATA_TYPE: "int",
-          IS_NULLABLE: "NO",
-          is_primary_key: 1,
-          COLUMN_DEFAULT: null,
-        },
-      ]),
-      mysqlDialect,
-      "app",
-      "items",
-    );
-    expect(columns).toEqual([
-      {
-        name: "id",
-        dataType: "int",
-        nullable: false,
-        isPrimaryKey: true,
       },
     ]);
   });

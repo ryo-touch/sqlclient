@@ -49,9 +49,6 @@ describe("dialect queries", () => {
     expect(dialectFor("postgres").listTables("ignored")).toContain(
       "tables.table_schema = $1",
     );
-    expect(dialectFor("postgres").listColumns("ignored", "ignored")).toContain(
-      "columns.table_name = $2",
-    );
   });
 
   test("hides system schemas unless explicitly requested", () => {

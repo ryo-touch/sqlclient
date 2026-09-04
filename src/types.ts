@@ -34,14 +34,6 @@ export interface TableRef {
   approxRows?: number;
 }
 
-export interface ColumnRef {
-  name: string;
-  dataType: string;
-  nullable: boolean;
-  isPrimaryKey: boolean;
-  defaultValue?: string;
-}
-
 export interface ResultSet {
   columns: string[];
   rows: unknown[][];

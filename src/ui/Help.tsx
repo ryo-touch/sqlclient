@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 
 const bindings = [
   ["j / k, arrows", "move up and down"],
-  ["h / l", "move catalog pane or result column"],
+  ["h / l", "move result column"],
   ["g / G", "move to first or last item"],
   ["Enter", "expand/collapse schema or open selection"],
   ["Tab", "cycle catalog, result, and query"],

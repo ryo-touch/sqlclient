@@ -84,7 +84,7 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 | Key             | 動作                                      |
 | --------------- | ----------------------------------------- |
 | `j` / `k`, 矢印 | 上下移動                                  |
-| `h` / `l`       | catalogのペイン移動、resultの列移動       |
+| `h` / `l`       | resultの列移動                            |
 | `g` / `G`       | 先頭 / 末尾                               |
 | `Enter`         | 接続・schema展開・table表示・履歴再実行   |
 | `Tab`           | catalog → result → queryを巡回            |

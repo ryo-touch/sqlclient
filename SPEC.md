@@ -42,7 +42,7 @@ MySQL / PostgreSQL のread-onlyアカウントへ接続し、スキーマとテ�
 対象
 
 - 接続一覧の表示と選択（MySQL の login-path / PostgreSQL の service）
-- カタログ閲覧: スキーマ → テーブル → カラム
+- カタログ閲覧: スキーマ → テーブル
 - テーブルのデータ閲覧（自動生成の SELECT、ページング）
 - 任意 SQL の実行（Ink 内の SQL editor と result を左右に同時表示する）
 - 結果グリッドの表示、横スクロール、セル値のコピー
@@ -69,7 +69,7 @@ sqlclient/
     core/
       credentials.ts     login-path / .pgpass / .pg_service.conf の解決
       connection.ts      Bun.SQL のラップ。接続、timeout、cancelを扱う
-      catalog.ts         スキーマ・テーブル・カラムの取得
+      catalog.ts         スキーマ・テーブルの取得
       query.ts           クエリ実行、ページング、結果の正規化
       query-editor.ts    複数行編集と cursor 操作の純粋関数
       history.ts         クエリ履歴の永続化
@@ -138,14 +138,6 @@ export interface TableRef {
   type: "table" | "view" | "other";
   /** 概算行数。取得できなければ undefined */
   approxRows?: number;
-}
-
-export interface ColumnRef {
-  name: string;
-  dataType: string;
-  nullable: boolean;
-  isPrimaryKey: boolean;
-  defaultValue?: string;
 }
 
 /** 結果セット。値は Bun.SQL が返した JS 値をそのまま保持する */
@@ -226,7 +218,6 @@ export interface Dialect {
   quoteIdent(name: string): string;
   listSchemas(): string;
   listTables(schema: string): string;
-  listColumns(schema: string, table: string): string;
   /** テーブル閲覧用の SELECT を組み立てる */
   selectAll(
     schema: string,
@@ -235,7 +226,6 @@ export interface Dialect {
     offset: number,
   ): string;
   tableParameters(schema: string): readonly unknown[];
-  columnParameters(schema: string, table: string): readonly unknown[];
 }
 ```
 
@@ -264,7 +254,6 @@ export interface Dialect {
   - MySQL: `information_schema.schemata` から。`information_schema` `performance_schema` `mysql` `sys` は既定で除外し、トグルで表示できるようにする
   - PostgreSQL: `information_schema.schemata` から。`pg_catalog` `information_schema` と `pg_` 前置のものを既定で除外する
 - テーブル一覧: 両者とも `information_schema.tables` を使う。概算行数は MySQL が `information_schema.tables.table_rows`、PostgreSQL は `pg_class.reltuples`。取得できなければ `undefined` にする
-- カラム一覧: `information_schema.columns` を `ordinal_position` 順で。主キー判定は MySQL が `column_key = 'PRI'`、PostgreSQL は `pg_index` から引く
 
 ## クエリ実行仕様
 
@@ -308,7 +297,7 @@ export interface Dialect {
 
 **catalog**
 
-- 左ペインにスキーマ → テーブルのツリー、右ペインに選択中テーブルのカラム一覧
+- 全幅でスキーマ → テーブルのツリーを表示する
 - テーブル上で `Enter` を押すとそのテーブルの先頭ページを取得して result モードへ
 
 **result**
@@ -330,7 +319,7 @@ export interface Dialect {
 ### キーバインド
 
 - `j` / `k` または矢印: 上下移動
-- `h` / `l`: result では横スクロール、catalog ではペイン移動
+- `h` / `l`: resultの横スクロール
 - `g` / `G`: 先頭 / 末尾
 - `Enter`: schema を展開／折りたたむ。table は選択して次の階層へ
 - `Tab`: catalog ⇄ result ⇄ query を巡回
@@ -365,7 +354,6 @@ export interface AppState {
   current?: ResolvedConnection;
   schemas: SchemaRef[];
   tables: TableRef[];
-  columns: ColumnRef[];
   result?: ResultSet;
   error?: QueryError;
   history: HistoryEntry[];
