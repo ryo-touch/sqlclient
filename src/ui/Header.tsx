@@ -17,7 +17,7 @@ export function Header({ current, schema, readOnlyVerified }: HeaderProps) {
       {narrow ? null : <Text> · </Text>}
       {current ? (
         <Text dimColor={narrow}>
-          {current.name} · {current.engine} {schema ? `· ${schema} ` : ""}
+          {current.engine} · {current.name} {schema ? `· ${schema} ` : ""}
           {readOnlyVerified ? <Text color="green">[read-only]</Text> : null}
         </Text>
       ) : (
