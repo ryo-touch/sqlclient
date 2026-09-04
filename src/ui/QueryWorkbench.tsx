@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { Box, Text, useStdout } from "ink";
 
 import { highlightSql, type SqlSegmentName } from "../core/highlight.ts";
-import { cursorPresentation } from "../core/query-editor.ts";
+import { cursorPresentation, selectionWindow } from "../core/query-editor.ts";
 import type { Engine, HistoryEntry, QueryFocus, ResultSet } from "../types.ts";
 import { formatDateTime } from "../util/format.ts";
 import { ResultGrid } from "./ResultGrid.tsx";
@@ -131,8 +131,13 @@ export function QueryWorkbench({
   const terminalRows = stdout.rows ?? 24;
   const editorLines = Math.max(5, Math.floor(terminalRows * 0.55));
   const editor = visibleEditor(sql, cursor, editorLines);
-  const historyLimit = Math.max(2, terminalRows - editorLines - 8);
-  const visibleHistory = history.slice(0, historyLimit);
+  const historyLimit = Math.max(1, terminalRows - editorLines - 10);
+  const historyRange = selectionWindow(
+    history.length,
+    focus === "history" ? selectedIndex : 0,
+    historyLimit,
+  );
+  const visibleHistory = history.slice(historyRange.start, historyRange.end);
   const resultWidth = Math.max(30, Math.floor(terminalWidth * 0.58) - 4);
   const historyPreviewWidth = Math.max(
     8,
@@ -179,17 +184,28 @@ export function QueryWorkbench({
           {visibleHistory.length === 0 ? (
             <Text dimColor>No history.</Text>
           ) : null}
-          {visibleHistory.map((entry, index) => (
-            <Text
-              key={`${entry.executedAt.getTime()}:${index}`}
-              inverse={focus === "history" && index === selectedIndex}
-            >
-              {focus === "history" && index === selectedIndex ? ">" : " "}{" "}
-              {entry.ok ? "✓" : "✗"}{" "}
-              {formatDateTime(entry.executedAt).slice(11)}{" "}
-              {preview(entry.sql, historyPreviewWidth)}
+          {historyRange.start > 0 ? (
+            <Text dimColor>… {historyRange.start} entries above</Text>
+          ) : null}
+          {visibleHistory.map((entry, localIndex) => {
+            const index = historyRange.start + localIndex;
+            return (
+              <Text
+                key={`${entry.executedAt.getTime()}:${index}`}
+                inverse={focus === "history" && index === selectedIndex}
+              >
+                {focus === "history" && index === selectedIndex ? ">" : " "}{" "}
+                {entry.ok ? "✓" : "✗"}{" "}
+                {formatDateTime(entry.executedAt).slice(11)}{" "}
+                {preview(entry.sql, historyPreviewWidth)}
+              </Text>
+            );
+          })}
+          {historyRange.end < history.length ? (
+            <Text dimColor>
+              … {history.length - historyRange.end} entries below
             </Text>
-          ))}
+          ) : null}
         </Box>
       </Box>
       <Box

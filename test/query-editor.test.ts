@@ -7,9 +7,16 @@ import {
   deleteQueryForward,
   insertQueryText,
   moveQueryCursor,
+  selectionWindow,
 } from "../src/core/query-editor.ts";
 
 describe("in-app query editor", () => {
+  test("keeps a selected history entry inside the visible window", () => {
+    expect(selectionWindow(20, 12, 5)).toEqual({ start: 10, end: 15 });
+    expect(selectionWindow(20, 0, 5)).toEqual({ start: 0, end: 5 });
+    expect(selectionWindow(20, 19, 5)).toEqual({ start: 15, end: 20 });
+  });
+
   test("cycles available panes forward and backward", () => {
     expect(cycleQueryFocus("editor", "forward", true, true)).toBe("result");
     expect(cycleQueryFocus("editor", "backward", true, true)).toBe("history");

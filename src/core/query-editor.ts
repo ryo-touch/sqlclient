@@ -21,6 +21,19 @@ export function cycleQueryFocus(
   );
 }
 
+export function selectionWindow(
+  length: number,
+  selectedIndex: number,
+  limit: number,
+): { start: number; end: number } {
+  const count = Math.max(1, limit);
+  const start = Math.max(
+    0,
+    Math.min(selectedIndex - Math.floor(count / 2), length - count),
+  );
+  return { start, end: Math.min(length, start + count) };
+}
+
 export function cursorPresentation(character: string | undefined) {
   return character === "\n"
     ? { glyph: " ", trailingNewline: "\n" }
