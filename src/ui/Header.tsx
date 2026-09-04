@@ -13,12 +13,20 @@ export function Header({ current, schema, readOnlyVerified }: HeaderProps) {
   const narrow = (stdout.columns ?? 80) < 90;
   return (
     <Box flexDirection={narrow ? "column" : "row"}>
-      <Text bold>sqlclient</Text>
-      {narrow ? null : <Text> · </Text>}
+      <Text bold color="cyan">
+        sqlclient
+      </Text>
+      {narrow ? null : <Text> </Text>}
       {current ? (
         <Text dimColor={narrow}>
-          {current.engine} · {current.name} {schema ? `· ${schema} ` : ""}
-          {readOnlyVerified ? <Text color="green">[read-only]</Text> : null}
+          <Text color="cyan">[{current.engine}]</Text> {current.name}
+          {schema ? (
+            <Text>
+              {" "}
+              <Text dimColor>›</Text> <Text bold>{schema}</Text>
+            </Text>
+          ) : null}
+          {readOnlyVerified ? <Text color="green"> ✓ read-only</Text> : null}
         </Text>
       ) : (
         <Text dimColor>not connected</Text>

@@ -62,7 +62,7 @@ export function CatalogTree({
         borderColor={activePane === "schemas" ? "cyan" : undefined}
         paddingX={1}
       >
-        <Text bold>Schemas and tables</Text>
+        <Text bold>Catalog</Text>
         {nodes.length === 0 ? <Text dimColor>No catalog entries.</Text> : null}
         {nodeRange.start > 0 ? (
           <Text dimColor>… {nodeRange.start} above</Text>
@@ -95,7 +95,7 @@ export function CatalogTree({
             >
               {selected ? ">" : " "} └{" "}
               {truncate(node.value.table, leftContentWidth - 5)}
-              {narrow ? "" : rows}
+              {narrow || rows === "" ? "" : <Text dimColor>{rows}</Text>}
             </Text>
           );
         })}
