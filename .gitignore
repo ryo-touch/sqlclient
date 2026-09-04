@@ -1,0 +1,4 @@
+node_modules/
+*.bun-build
+sqlclient
+.DS_Store
