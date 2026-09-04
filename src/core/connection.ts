@@ -99,6 +99,38 @@ export function readOnlyValueIsVerified(
   return engine === "mysql" ? value === 1 || value === 1n : value === "on";
 }
 
+const mysqlReadOnlyPrivileges = new Set([
+  "PROCESS",
+  "REPLICATION CLIENT",
+  "SELECT",
+  "SHOW DATABASES",
+  "SHOW VIEW",
+  "USAGE",
+]);
+
+export function mysqlGrantsAreReadOnly(rows: unknown): boolean {
+  if (!Array.isArray(rows) || rows.length === 0) return false;
+  const privileges: string[] = [];
+
+  for (const row of rows) {
+    if (typeof row !== "object" || row === null) return false;
+    const grant = Object.values(row).find(
+      (value): value is string => typeof value === "string",
+    );
+    if (!grant || /\bWITH\s+GRANT\s+OPTION\b/iu.test(grant)) return false;
+    const match = /^GRANT\s+(.+?)\s+ON\s+.+?\s+TO\s+/iu.exec(grant);
+    if (!match?.[1]) return false;
+    privileges.push(
+      ...match[1].split(",").map((privilege) => privilege.trim().toUpperCase()),
+    );
+  }
+
+  return (
+    privileges.includes("SELECT") &&
+    privileges.every((privilege) => mysqlReadOnlyPrivileges.has(privilege))
+  );
+}
+
 function connectionId(rows: unknown): ConnectionId | undefined {
   if (!Array.isArray(rows) || rows.length === 0) return undefined;
   const row = rows[0];
@@ -142,7 +174,17 @@ export async function connectDatabase(
       connection.engine === "mysql"
         ? await reserved`SELECT @@transaction_read_only`
         : await reserved`SHOW default_transaction_read_only`;
-    if (!readOnlyValueIsVerified(connection.engine, verification)) {
+    let readOnlyVerified = readOnlyValueIsVerified(
+      connection.engine,
+      verification,
+    );
+    if (!readOnlyVerified && connection.engine === "mysql") {
+      // Some Aurora accounts enforce read-only through grants while ignoring the
+      // session variable. Accept only an explicit, fully understood read-only set.
+      const grants = await reserved`SHOW GRANTS FOR CURRENT_USER()`;
+      readOnlyVerified = mysqlGrantsAreReadOnly(grants);
+    }
+    if (!readOnlyVerified) {
       throw new Error("The server did not confirm read-only mode");
     }
     const identifier =

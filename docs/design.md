@@ -12,6 +12,8 @@ read-onlyはconnection pool全体ではなくserver sessionの属性である。
 
 staging / productionのような接続名は認可情報として扱わない。Auroraを含む接続先が返すread-only状態を正本とし、確認できたsessionだけを利用する。これによりproduction用login-pathも、DB側の権限とread-only設定を保ったまま使用できる。
 
+Aurora MySQLでは、参照専用アカウントでもsessionの `transaction_read_only` が `0` から変わらない構成がある。この場合だけ `SHOW GRANTS FOR CURRENT_USER()` を確認し、`SELECT` を必須とした既知の参照系権限だけで構成されていれば、アカウント権限によるserver-side強制として受け入れる。grant文字列を理解できない場合や書き込みにつながる権限があればfail closedにする。
+
 ## cancelは別connectionからserverへ送る
 
 Bun 1.4.0では実行中でも `Query.active` がfalseのままになり、`Query.cancel()` もPostgreSQL/MySQLの実測でクエリを止めなかった。接続時にbackend IDを取得し、短命なcontrol connectionからPostgreSQLは `pg_cancel_backend`、MySQLは `KILL QUERY` を送る。さらにserver sessionにも30秒timeoutを設定し、UI timerだけに安全性を依存させない。
