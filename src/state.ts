@@ -78,6 +78,11 @@ export type Action =
   | { type: "connectionSucceeded"; connection: ConnectionSummary }
   | { type: "connectionFailed"; error: QueryError }
   | { type: "returnedToConnections" }
+  | { type: "catalogLoading"; message: string }
+  | { type: "schemasLoaded"; schemas: SchemaRef[]; showSystem: boolean }
+  | { type: "tablesLoaded"; schema: string; tables: TableRef[] }
+  | { type: "columnsLoaded"; table: string; columns: ColumnRef[] }
+  | { type: "setCatalogPane"; pane: "schemas" | "tables" }
   | { type: "showError"; error: QueryError }
   | { type: "clearError" };
 
@@ -176,8 +181,56 @@ export function reducer(state: AppState, action: Action): AppState {
         error: undefined,
         message: undefined,
       };
+    case "catalogLoading":
+      return {
+        ...state,
+        running: true,
+        error: undefined,
+        message: action.message,
+      };
+    case "schemasLoaded":
+      return {
+        ...state,
+        schemas: action.schemas,
+        tables: [],
+        columns: [],
+        selectedSchema: undefined,
+        selectedTable: undefined,
+        selectedIndex: 0,
+        showSystemSchemas: action.showSystem,
+        running: false,
+        message: undefined,
+        lastUpdated: new Date(),
+      };
+    case "tablesLoaded":
+      return {
+        ...state,
+        tables: action.tables,
+        columns: [],
+        selectedSchema: action.schema,
+        selectedTable: undefined,
+        running: false,
+        message: undefined,
+        lastUpdated: new Date(),
+      };
+    case "columnsLoaded":
+      return {
+        ...state,
+        columns: action.columns,
+        selectedTable: action.table,
+        running: false,
+        message: undefined,
+        lastUpdated: new Date(),
+      };
+    case "setCatalogPane":
+      return { ...state, catalogPane: action.pane, selectedIndex: 0 };
     case "showError":
-      return { ...state, error: action.error, running: false };
+      return {
+        ...state,
+        error: action.error,
+        running: false,
+        message: undefined,
+      };
     case "clearError":
       return { ...state, error: undefined };
   }

@@ -16,6 +16,14 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function field(row: Readonly<Record<string, unknown>>, name: string): unknown {
+  if (Object.hasOwn(row, name)) return row[name];
+  const matchingKey = Object.keys(row).find(
+    (key) => key.toLowerCase() === name.toLowerCase(),
+  );
+  return matchingKey === undefined ? undefined : row[matchingKey];
+}
+
 function approximateRows(value: unknown): number | undefined {
   if (typeof value === "bigint") {
     const converted = Number(value);
@@ -59,7 +67,7 @@ export async function listSchemas(
     dialect.listSchemas(includeSystem),
   );
   return records(result)
-    .map((row) => text(row["schema_name"]))
+    .map((row) => text(field(row, "schema_name")))
     .filter((schema): schema is string => schema !== undefined)
     .map((schema) => ({ schema }));
 }
@@ -74,15 +82,15 @@ export async function listTables(
     dialect.tableParameters(schema),
   );
   return records(result).flatMap((row) => {
-    const resultSchema = text(row["schema_name"]);
-    const table = text(row["table_name"]);
+    const resultSchema = text(field(row, "schema_name"));
+    const table = text(field(row, "table_name"));
     if (!resultSchema || !table) return [];
-    const approxRows = approximateRows(row["approx_rows"]);
+    const approxRows = approximateRows(field(row, "approx_rows"));
     return [
       {
         schema: resultSchema,
         table,
-        type: tableType(row["table_type"]),
+        type: tableType(field(row, "table_type")),
         ...(approxRows === undefined ? {} : { approxRows }),
       },
     ];
@@ -100,16 +108,16 @@ export async function listColumns(
     dialect.columnParameters(schema, table),
   );
   return records(result).flatMap((row) => {
-    const name = text(row["column_name"]);
-    const dataType = text(row["data_type"]);
+    const name = text(field(row, "column_name"));
+    const dataType = text(field(row, "data_type"));
     if (!name || !dataType) return [];
-    const defaultValue = row["column_default"];
+    const defaultValue = field(row, "column_default");
     return [
       {
         name,
         dataType,
-        nullable: booleanValue(row["is_nullable"]),
-        isPrimaryKey: booleanValue(row["is_primary_key"]),
+        nullable: booleanValue(field(row, "is_nullable")),
+        isPrimaryKey: booleanValue(field(row, "is_primary_key")),
         ...(defaultValue === null || defaultValue === undefined
           ? {}
           : { defaultValue: String(defaultValue) }),

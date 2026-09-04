@@ -37,4 +37,33 @@ describe("application reducer", () => {
       filterEditing: false,
     });
   });
+
+  test("loads catalog levels without losing the verified connection", () => {
+    const connected = reducer(initialState, {
+      type: "connectionSucceeded",
+      connection: {
+        name: "fixture",
+        engine: "postgres",
+        source: "env",
+        host: "localhost",
+        port: 5432,
+        user: "reader",
+      },
+    });
+    const schemas = reducer(connected, {
+      type: "schemasLoaded",
+      schemas: [{ schema: "public" }],
+      showSystem: false,
+    });
+    const tables = reducer(schemas, {
+      type: "tablesLoaded",
+      schema: "public",
+      tables: [{ schema: "public", table: "items", type: "table" }],
+    });
+    expect(tables).toMatchObject({
+      readOnlyVerified: true,
+      selectedSchema: "public",
+      tables: [{ table: "items" }],
+    });
+  });
 });
