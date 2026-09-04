@@ -83,6 +83,15 @@ export type Action =
   | { type: "tablesLoaded"; schema: string; tables: TableRef[] }
   | { type: "columnsLoaded"; table: string; columns: ColumnRef[] }
   | { type: "setCatalogPane"; pane: "schemas" | "tables" }
+  | { type: "queryStarted"; message: string }
+  | {
+      type: "querySucceeded";
+      result: ResultSet;
+      source: NonNullable<AppState["resultSource"]>;
+    }
+  | { type: "queryFailed"; error: QueryError }
+  | { type: "moveResultColumn"; delta: number; columnCount: number }
+  | { type: "setMode"; mode: Mode }
   | { type: "showError"; error: QueryError }
   | { type: "clearError" };
 
@@ -224,6 +233,57 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "setCatalogPane":
       return { ...state, catalogPane: action.pane, selectedIndex: 0 };
+    case "queryStarted":
+      return {
+        ...state,
+        running: true,
+        error: undefined,
+        message: action.message,
+      };
+    case "querySucceeded":
+      return {
+        ...state,
+        result: action.result,
+        resultSource: action.source,
+        mode: "result",
+        previousMode: "catalog",
+        selectedIndex: 0,
+        selectedColumnIndex: 0,
+        columnOffset: 0,
+        running: false,
+        message: `${action.result.rowCount} rows in ${action.result.elapsedMs.toFixed(1)} ms`,
+        error: undefined,
+        lastUpdated: new Date(),
+      };
+    case "queryFailed":
+      return {
+        ...state,
+        running: false,
+        message: undefined,
+        error: action.error,
+        lastUpdated: new Date(),
+      };
+    case "moveResultColumn": {
+      const selectedColumnIndex = clampSelection(
+        state.selectedColumnIndex + action.delta,
+        action.columnCount,
+      );
+      return {
+        ...state,
+        selectedColumnIndex,
+        columnOffset: selectedColumnIndex,
+      };
+    }
+    case "setMode":
+      return {
+        ...state,
+        previousMode: state.mode,
+        mode: action.mode,
+        selectedIndex: 0,
+        filter: "",
+        filterEditing: false,
+        error: undefined,
+      };
     case "showError":
       return {
         ...state,

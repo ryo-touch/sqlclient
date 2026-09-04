@@ -11,11 +11,13 @@ import {
 } from "./core/connection.ts";
 import { listColumns, listSchemas, listTables } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
+import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
 import { initialState, reducer } from "./state.ts";
 import { ConnectionList } from "./ui/ConnectionList.tsx";
 import { FilterInput } from "./ui/FilterInput.tsx";
 import { Header } from "./ui/Header.tsx";
 import { CatalogTree, type CatalogNode } from "./ui/CatalogTree.tsx";
+import { ResultGrid } from "./ui/ResultGrid.tsx";
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -132,6 +134,47 @@ export function App() {
     dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
   }, []);
 
+  const runTablePage = useCallback(
+    async (schema: string, table: string, offset: number) => {
+      const connected = session.current;
+      if (!connected) return;
+      dispatch({ type: "queryStarted", message: "Running table query…" });
+      const outcome = await executeTablePage(
+        connected,
+        dialectFor(connected.info.engine),
+        schema,
+        table,
+        offset,
+      );
+      if (outcome.ok) {
+        dispatch({
+          type: "querySucceeded",
+          result: outcome.result,
+          source: { kind: "table", schema, table },
+        });
+      } else {
+        dispatch({ type: "queryFailed", error: outcome.error });
+      }
+    },
+    [],
+  );
+
+  const runUserSql = useCallback(async (sql: string) => {
+    const connected = session.current;
+    if (!connected) return;
+    dispatch({ type: "queryStarted", message: "Running query…" });
+    const outcome = await executeUserQuery(connected, sql);
+    if (outcome.ok) {
+      dispatch({
+        type: "querySucceeded",
+        result: outcome.result,
+        source: { kind: "query" },
+      });
+    } else {
+      dispatch({ type: "queryFailed", error: outcome.error });
+    }
+  }, []);
+
   const openCatalogNode = useCallback(
     async (node: CatalogNode) => {
       const connected = session.current;
@@ -155,12 +198,13 @@ export function App() {
             node.value.table,
           );
           dispatch({ type: "columnsLoaded", table: node.value.table, columns });
+          await runTablePage(node.value.schema, node.value.table, 0);
         }
       } catch (error) {
         showCatalogError(error);
       }
     },
-    [showCatalogError],
+    [runTablePage, showCatalogError],
   );
 
   const reloadSchemas = useCallback(async (showSystem: boolean) => {
@@ -180,6 +224,14 @@ export function App() {
   }, []);
 
   useInput((input, key) => {
+    if (state.running && key.ctrl && input === "c") {
+      const cancelled = session.current?.cancelActive() ?? false;
+      dispatch({
+        type: "showMessage",
+        message: cancelled ? "Cancelling query…" : "Nothing to cancel",
+      });
+      return;
+    }
     if (state.running) return;
 
     const movementCommands = [...input];
@@ -193,9 +245,11 @@ export function App() {
       const itemCount =
         state.mode === "connections"
           ? visibleConnections.length
-          : state.catalogPane === "schemas"
-            ? catalogNodes.length
-            : visibleColumns.length;
+          : state.mode === "result"
+            ? (state.result?.rows.length ?? 0)
+            : state.catalogPane === "schemas"
+              ? catalogNodes.length
+              : visibleColumns.length;
       for (const command of movementCommands) {
         if (command === "j" || command === "k") {
           dispatch({
@@ -214,6 +268,70 @@ export function App() {
       return;
     }
 
+    if (state.mode === "result") {
+      const rowCount = state.result?.rows.length ?? 0;
+      const columnCount = state.result?.columns.length ?? 0;
+      if (input === "j" || key.downArrow)
+        dispatch({ type: "moveSelection", delta: 1, itemCount: rowCount });
+      else if (input === "k" || key.upArrow)
+        dispatch({ type: "moveSelection", delta: -1, itemCount: rowCount });
+      else if (input === "g")
+        dispatch({
+          type: "moveToBoundary",
+          boundary: "first",
+          itemCount: rowCount,
+        });
+      else if (input === "G")
+        dispatch({
+          type: "moveToBoundary",
+          boundary: "last",
+          itemCount: rowCount,
+        });
+      else if (input === "h")
+        dispatch({ type: "moveResultColumn", delta: -1, columnCount });
+      else if (input === "l")
+        dispatch({ type: "moveResultColumn", delta: 1, columnCount });
+      else if (
+        input === "n" &&
+        state.resultSource?.kind === "table" &&
+        state.result?.hasMore
+      )
+        void runTablePage(
+          state.resultSource.schema,
+          state.resultSource.table,
+          state.result.offset + PAGE_SIZE,
+        );
+      else if (
+        input === "p" &&
+        state.resultSource?.kind === "table" &&
+        state.result
+      )
+        void runTablePage(
+          state.resultSource.schema,
+          state.resultSource.table,
+          Math.max(0, state.result.offset - PAGE_SIZE),
+        );
+      else if (
+        input === "r" &&
+        state.resultSource?.kind === "table" &&
+        state.result
+      )
+        void runTablePage(
+          state.resultSource.schema,
+          state.resultSource.table,
+          state.result.offset,
+        );
+      else if (
+        input === "r" &&
+        state.resultSource?.kind === "query" &&
+        state.result
+      )
+        void runUserSql(state.result.sql);
+      else if (key.tab || input === "q" || key.escape)
+        dispatch({ type: "setMode", mode: "catalog" });
+      return;
+    }
+
     if (state.mode === "catalog") {
       const itemCount =
         state.catalogPane === "schemas"
@@ -227,6 +345,8 @@ export function App() {
         else if (input !== "" && !key.ctrl && !key.meta)
           dispatch({ type: "appendFilter", text: input });
       } else if (input === "/") dispatch({ type: "beginFilter" });
+      else if (key.tab && state.result)
+        dispatch({ type: "setMode", mode: "result" });
       else if (input === "j" || key.downArrow)
         dispatch({ type: "moveSelection", delta: 1, itemCount });
       else if (input === "k" || key.upArrow)
@@ -317,7 +437,7 @@ export function App() {
             connections={visibleConnections}
             selectedIndex={state.selectedIndex}
           />
-        ) : (
+        ) : state.mode === "catalog" ? (
           <CatalogTree
             nodes={catalogNodes}
             columns={visibleColumns}
@@ -326,6 +446,15 @@ export function App() {
             selectedSchema={state.selectedSchema}
             selectedTable={state.selectedTable}
           />
+        ) : state.result ? (
+          <ResultGrid
+            result={state.result}
+            selectedRow={state.selectedIndex}
+            selectedColumn={state.selectedColumnIndex}
+            columnOffset={state.columnOffset}
+          />
+        ) : (
+          <Text dimColor>No result.</Text>
         )}
       </Box>
       {state.mode === "connections" || state.mode === "catalog" ? (
@@ -341,7 +470,9 @@ export function App() {
       <Text dimColor>
         {state.mode === "connections"
           ? "j/k move · Enter connect · / filter · q quit"
-          : "j/k move · h/l pane · Enter expand · s system · / filter · q back"}
+          : state.mode === "catalog"
+            ? "j/k move · h/l pane · Enter open · s system · Tab result · / filter · q back"
+            : "j/k rows · h/l columns · n/p page · r rerun · Tab/q catalog"}
       </Text>
     </Box>
   );

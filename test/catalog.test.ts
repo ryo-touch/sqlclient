@@ -17,6 +17,7 @@ function sessionReturning(rows: unknown): DatabaseSession {
     readOnlyVerified: true,
     executeCatalog: () => Promise.resolve(rows) as never,
     executeUser: () => Promise.resolve([]) as never,
+    toQueryError: () => ({ message: "failed" }),
     cancelActive: () => false,
     close: async () => undefined,
   };

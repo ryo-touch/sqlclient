@@ -13,6 +13,7 @@ export interface DatabaseSession {
   readonly readOnlyVerified: true;
   executeCatalog<T>(statement: string, values?: readonly unknown[]): Query<T>;
   executeUser<T>(statement: string): Query<T>;
+  toQueryError(error: unknown): QueryError;
   cancelActive(): boolean;
   close(): Promise<void>;
 }
@@ -156,6 +157,7 @@ export async function connectDatabase(
       track(client.unsafe<T>(statement, [...values])),
     // User-authored SQL cannot be parameterized or safely rewritten.
     executeUser: <T>(statement: string) => track(client.unsafe<T>(statement)),
+    toQueryError: (error: unknown) => sanitizeDatabaseError(error, connection),
     cancelActive: () => {
       if (!active?.active) return false;
       active.cancel();
