@@ -16,5 +16,8 @@ describe("display formatting", () => {
   test("truncates overflowing cells with an ellipsis", () => {
     expect(truncateCell("abcdef", 4)).toBe("abc…");
     expect(truncateCell("ab", 4)).toBe("ab  ");
+    expect(truncateCell("1支店", 5)).toBe("1支店");
+    expect(truncateCell("日本語", 5)).toBe("日本…");
+    expect(truncateCell("42", 4, "right")).toBe("  42");
   });
 });

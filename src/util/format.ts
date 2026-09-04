@@ -36,9 +36,31 @@ export function formatValue(value: unknown): FormattedValue {
   return { text: String(value), isNull: false };
 }
 
-export function truncateCell(value: string, width: number): string {
+function truncateToWidth(value: string, width: number): string {
+  if (Bun.stringWidth(value) <= width) return value;
+  if (width <= 1) return "…";
+
+  const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  let result = "";
+  let used = 0;
+  for (const { segment } of segmenter.segment(value)) {
+    const segmentWidth = Bun.stringWidth(segment);
+    if (used + segmentWidth > width - 1) break;
+    result += segment;
+    used += segmentWidth;
+  }
+  return `${result}…`;
+}
+
+export function truncateCell(
+  value: string,
+  width: number,
+  align: "left" | "right" = "left",
+): string {
   if (width <= 0) return "";
-  if (value.length > width)
-    return width === 1 ? "…" : `${value.slice(0, width - 1)}…`;
-  return value.padEnd(width);
+  const truncated = truncateToWidth(value, width);
+  const padding = " ".repeat(Math.max(0, width - Bun.stringWidth(truncated)));
+  return align === "right"
+    ? `${padding}${truncated}`
+    : `${truncated}${padding}`;
 }

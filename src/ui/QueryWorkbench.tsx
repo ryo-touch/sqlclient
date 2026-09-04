@@ -127,7 +127,7 @@ export function QueryWorkbench({
   const resultWidth = Math.max(30, Math.floor(terminalWidth * 0.58) - 4);
   const historyPreviewWidth = Math.max(
     8,
-    Math.floor(terminalWidth * 0.42) - 17,
+    Math.floor(terminalWidth * 0.42) - 19,
   );
 
   return (

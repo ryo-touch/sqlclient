@@ -40,6 +40,8 @@ SQLを書きながら直前の結果を参照することを優先し、query mo
 
 Inkの `Static` は追記専用で選択行の更新に向かない。catalog、history、resultはいずれも選択位置の周辺だけをrenderし、resultのcolumnも端末幅へ収まる分だけ作る。DB取得上限だけではReact要素数を抑えられないため、取得・保持・描画を別々に制限している。
 
+resultの幅計算には文字数ではなく `Bun.stringWidth` を使う。日本語や絵文字を含む値でも罫線を揃え、数値列は右寄せ、文字列は左寄せにして比較しやすくする。
+
 ## 検証用credential storeを分離する
 
 PostgreSQLはlibpq標準の `PGSERVICEFILE` / `PGPASSFILE`、MySQLは `MYSQL_TEST_LOGIN_FILE` を尊重する。Docker検証で利用者本人のstoreを書き換えず、同じparser／resolver経路を通せるためである。
