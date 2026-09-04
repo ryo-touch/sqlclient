@@ -73,6 +73,11 @@ export type Action =
   | { type: "clearFilter" }
   | { type: "showMessage"; message: string }
   | { type: "clearMessage" }
+  | { type: "addWarnings"; warnings: string[] }
+  | { type: "connectionStarted" }
+  | { type: "connectionSucceeded"; connection: ConnectionSummary }
+  | { type: "connectionFailed"; error: QueryError }
+  | { type: "returnedToConnections" }
   | { type: "showError"; error: QueryError }
   | { type: "clearError" };
 
@@ -127,6 +132,50 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, message: action.message };
     case "clearMessage":
       return { ...state, message: undefined };
+    case "addWarnings":
+      return { ...state, warnings: [...state.warnings, ...action.warnings] };
+    case "connectionStarted":
+      return {
+        ...state,
+        running: true,
+        error: undefined,
+        message: "Connecting…",
+      };
+    case "connectionSucceeded":
+      return {
+        ...state,
+        current: action.connection,
+        readOnlyVerified: true,
+        mode: "catalog",
+        previousMode: "connections",
+        selectedIndex: 0,
+        filter: "",
+        running: false,
+        message: undefined,
+        error: undefined,
+        lastUpdated: new Date(),
+      };
+    case "connectionFailed":
+      return {
+        ...state,
+        current: undefined,
+        readOnlyVerified: false,
+        running: false,
+        message: undefined,
+        error: action.error,
+      };
+    case "returnedToConnections":
+      return {
+        ...state,
+        current: undefined,
+        readOnlyVerified: false,
+        mode: "connections",
+        previousMode: undefined,
+        selectedIndex: 0,
+        filter: "",
+        error: undefined,
+        message: undefined,
+      };
     case "showError":
       return { ...state, error: action.error, running: false };
     case "clearError":
