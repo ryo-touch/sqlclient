@@ -83,7 +83,7 @@ catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定s
 | `g` / `G`       | 先頭 / 末尾                               |
 | `Enter`         | 接続・schema展開・table表示・履歴再実行   |
 | `Tab`           | catalog → result → queryを巡回            |
-| `e`             | `$EDITOR` でSQLを編集し、変更内容を実行   |
+| `e`             | `$EDITOR` を開き、保存したSQLを実行       |
 | `r`             | 直近または選択中のクエリを再実行          |
 | `n` / `p`       | table結果の次 / 前ページ                  |
 | `y`             | 選択セルまたはtable名を `pbcopy` へコピー |
@@ -93,6 +93,12 @@ catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定s
 | `Ctrl-C`        | 実行中クエリを中断                        |
 
 クエリ履歴は新しい順に最大500件を `~/.config/sqlclient/history.jsonl` へ0600で保存します。
+
+### cmuxでのエディタ表示
+
+cmux上で `e` を押すと、現在のresult／catalogを元paneに残したまま、右側の別paneへ `$EDITOR` を開きます。エディタを終了する必要はなく、保存するたびにSQLが元paneで実行され、結果が更新されます。エディタを終了した後に再度 `e` を押した場合は、作成済みの右paneを再利用します。
+
+cmux外では従来どおり現在のterminalを一時的に `$EDITOR` へ明け渡し、保存してエディタを終了した時点でSQLを実行します。
 
 ## 既知の制約
 

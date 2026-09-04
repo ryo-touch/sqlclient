@@ -24,7 +24,7 @@ import {
 } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
-import { editQuery } from "./core/editor.ts";
+import { canUseCmuxEditor, editQuery, editQueryInCmux } from "./core/editor.ts";
 import { loadHistory, recordHistory } from "./core/history.ts";
 import { copyValue } from "./core/clipboard.ts";
 import type { HistoryEntry } from "./types.ts";
@@ -42,6 +42,8 @@ export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { exit, suspendTerminal } = useApp();
   const session = useRef<DatabaseSession | undefined>(undefined);
+  const editorSurface = useRef<string | undefined>(undefined);
+  const editorAbort = useRef<AbortController | undefined>(undefined);
   const historyWrite = useRef<Promise<void>>(Promise.resolve());
   const [runningSeconds, setRunningSeconds] = useState(0);
 
@@ -95,6 +97,7 @@ export function App() {
 
   useEffect(
     () => () => {
+      editorAbort.current?.abort();
       void session.current?.close();
     },
     [],
@@ -296,6 +299,39 @@ export function App() {
   }, [catalogNodes, state]);
 
   const editAndRun = useCallback(async () => {
+    if (canUseCmuxEditor()) {
+      const controller = new AbortController();
+      editorAbort.current?.abort();
+      editorAbort.current = controller;
+      dispatch({
+        type: "showMessage",
+        message: "Editor opened on the right; save to run SQL",
+      });
+      try {
+        const result = await editQueryInCmux(
+          state.result?.sql ?? "",
+          runUserSql,
+          {
+            surfaceRef: editorSurface.current,
+            signal: controller.signal,
+          },
+        );
+        if (!controller.signal.aborted) {
+          editorSurface.current = result.surfaceRef;
+          dispatch({ type: "showMessage", message: "Editor pane closed" });
+        }
+        if (editorAbort.current === controller) editorAbort.current = undefined;
+        return;
+      } catch {
+        if (controller.signal.aborted) return;
+        if (editorAbort.current === controller) editorAbort.current = undefined;
+        dispatch({
+          type: "addWarnings",
+          warnings: ["cmux editor pane failed; using the current terminal"],
+        });
+      }
+    }
+
     try {
       let edited: Awaited<ReturnType<typeof editQuery>> | undefined;
       await suspendTerminal(async () => {
@@ -579,6 +615,8 @@ export function App() {
           return;
         }
         const current = session.current;
+        editorAbort.current?.abort();
+        editorAbort.current = undefined;
         session.current = undefined;
         void current?.close();
         dispatch({ type: "returnedToConnections" });

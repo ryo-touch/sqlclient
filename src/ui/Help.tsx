@@ -6,7 +6,7 @@ const bindings = [
   ["g / G", "move to first or last item"],
   ["Enter", "open or execute selection"],
   ["Tab", "cycle catalog, result, and query"],
-  ["e", "edit SQL in $EDITOR and execute it"],
+  ["e", "open $EDITOR; save to execute SQL"],
   ["r", "rerun the most recent or selected query"],
   ["n / p", "next or previous table page"],
   ["y", "copy selected cell or table name"],
