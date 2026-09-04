@@ -1,14 +1,14 @@
-# sqlclient 実装指示書
+# sqlclient 仕様書
 
-このファイルは Claude Code / Codex への実装依頼書である。プロジェクト直下に置き、ここに書かれた仕様と手順に従って `sqlclient` を最後まで実装すること。判断に迷った場合は「既定の判断」の節を優先し、それでも決められない場合のみ質問する。
+このファイルは `sqlclient` の現行仕様を記録する。利用手順は `README.md`、設計理由は `docs/design.md` を正本とする。
 
 ## 概要
 
-MySQL / PostgreSQL に参照専用で接続し、スキーマとテーブルを辿りながら、任意の SQL を書いて結果を確認できるターミナルアプリ。
+MySQL / PostgreSQL のread-onlyアカウントへ接続し、スキーマとテーブルを辿りながら、任意の SQL を書いて結果を確認できるターミナルアプリ。
 
-- 利用者は開発者本人のみ。ローカルで動けばよい
+- ローカル端末で利用する
 - Bun + TypeScript + Ink で実装する
-- **参照専用**。書き込みはアプリの機能として持たず、サーバ側のセッション設定で禁止する
+- SQLは解析・制限せず、そのままDBへ送る。書き込み防止はDBアカウントの権限に委ねる
 - 資格情報はアプリで管理しない。MySQL は `.mylogin.cnf` の login-path、PostgreSQL は `.pg_service.conf` と `.pgpass` という各 DB の標準ストアをそのまま読む
 
 ## 成果物
@@ -48,9 +48,9 @@ MySQL / PostgreSQL に参照専用で接続し、スキーマとテーブルを�
 - 結果グリッドの表示、横スクロール、セル値のコピー
 - クエリ履歴
 
-対象外（実装しない）
+対象外
 
-- INSERT / UPDATE / DELETE / DDL、およびそれらを実行しうる経路
+- アプリ側でのSQL許可リスト、書き込み防止、DB権限の検証
 - 接続情報の新規登録・編集（既存の標準ストアを読むだけ）
 - SQLite、その他の RDBMS
 - SSH トンネル
@@ -68,7 +68,7 @@ sqlclient/
     types.ts             型定義
     core/
       credentials.ts     login-path / .pgpass / .pg_service.conf の解決
-      connection.ts      Bun.SQL のラップ。接続直後に read-only を強制する
+      connection.ts      Bun.SQL のラップ。接続、timeout、cancelを扱う
       catalog.ts         スキーマ・テーブル・カラムの取得
       query.ts           クエリ実行、ページング、結果の正規化
       query-editor.ts    複数行編集と cursor 操作の純粋関数
@@ -202,20 +202,16 @@ export interface HistoryEntry {
 
 **`.pgpass` と `.pg_service.conf` のパーサは純粋関数にし、fixture でテストする。**エスケープとワイルドカードの優先順位が唯一の複雑さなので、ここは厚く書く。
 
-## 接続と read-only 強制の仕様
+## 接続と安全境界の仕様
 
 `core/connection.ts`
 
-- `Bun.SQL` に渡す接続 URL を `ResolvedConnection` から組み立てる。`mysql://` / `postgres://` のスキームでアダプタが選ばれる
-- **接続直後、最初のクエリを流す前に、必ず以下を実行する。失敗したら接続を破棄し、エラーとして扱う（read-only を確認できない接続は使わせない）**
-  - MySQL: `SET SESSION TRANSACTION READ ONLY`
-  - PostgreSQL: `SET default_transaction_read_only = on`
-- 適用後、実際に効いていることを確認する
-  - MySQL: `SELECT @@transaction_read_only` が `1` であること
-  - PostgreSQL: `SHOW default_transaction_read_only` が `on` であること
-- 確認できたら state に「read-only 確認済み」を持ち、Header に常時表示する
-
-この方式を採る理由は、クライアント側で SQL 文字列を検査する方法には必ず抜け道（コメント、CTE 内の `INSERT ... RETURNING`、複文）が残るからである。**文字列検査で代替してはならない。**
+- `ResolvedConnection` はURL文字列へ変換せず、`adapter` / `hostname` / `port` / `username` / `password` / `database` の構造化optionとして `Bun.SQL` へ渡す
+- IPv6 literalは角括弧を除いたhostとして渡す
+- 選択中はpoolから1本をreserveし、schema選択、クエリ、backend IDを同じsessionへ結び付ける
+- MySQLは `max_execution_time`、PostgreSQLは `statement_timeout` を30秒へ設定する
+- アプリはSQL文字列やgrantを検査せず、read-only確認済みという状態や表示を持たない
+- 書き込み防止には、対象schema/tableへの参照権限だけを持つ専用DBアカウントを使う
 
 接続は遅延させる。起動時は接続一覧を出すだけで、選択されるまで接続しない。
 
@@ -238,8 +234,8 @@ export interface Dialect {
     limit: number,
     offset: number,
   ): string;
-  readOnlyStatements(): string[];
-  verifyReadOnly(): string;
+  tableParameters(schema: string): readonly unknown[];
+  columnParameters(schema: string, table: string): readonly unknown[];
 }
 ```
 
@@ -275,8 +271,8 @@ export interface Dialect {
 `core/query.ts`
 
 - 実行はすべて `core/connection.ts` の接続経由。タイムアウトは 30 秒
-- **結果セット全体をメモリに載せない。**テーブル閲覧の自動生成 SELECT には必ず `LIMIT` / `OFFSET` を付ける（既定 200 行）
-- ユーザーが書いた SQL には `LIMIT` を勝手に付けない（`LIMIT` の有無で意味が変わるうえ、構文解析なしに安全に挿入できないため）。代わりに**取得行数の上限を 2000 行とし、超えたら打ち切って「打ち切った」と表示する**
+- テーブル閲覧の自動生成 SELECT には必ず `LIMIT` / `OFFSET` を付ける（既定 200 行）
+- ユーザーが書いた SQL には `LIMIT` を勝手に付けない。Bun.SQLから結果を受信した直後に、stateと画面へ保持する行を2000行へ切り詰める。driverが一時的に全結果を保持する可能性は既知の制約とする
 - エラーはサーバのメッセージをそのまま `QueryError` に入れる。**接続 URL やパスワードが混ざらないよう、メッセージに接続文字列が含まれていないか確認してから state に渡す**
 - 値は `Bun.SQL` が返した JS 値をそのまま保持する。文字列化は `util/format.ts` の表示層でのみ行う。これにより `NULL` と文字列 `'NULL'` が区別できる
 
@@ -357,7 +353,7 @@ export interface Dialect {
 
 ### Header
 
-- 常時、接続名 / engine / **read-only 確認済みバッジ**を表示する
+- 常時、接続名 / engine / 選択中のschemaとtableを表示する
 
 ## 状態管理
 
@@ -367,7 +363,6 @@ export interface Dialect {
 export interface AppState {
   connections: ConnectionRef[];
   current?: ResolvedConnection;
-  readOnlyVerified: boolean;
   schemas: SchemaRef[];
   tables: TableRef[];
   columns: ColumnRef[];
@@ -397,71 +392,55 @@ export interface AppState {
 - 1 ページ 200 行、横 50 列程度で `j` の長押しが引っかからないこと
 - クエリ実行中も UI は操作でき、`Ctrl-C` で中断できる
 
-## 作業手順
-
-以下の順に進め、各ステップの終わりで動作確認とコミットを行う。
-
-1. プロジェクト初期化: `bun init`、依存追加、tsconfig（strict、`jsx: react-jsx`）、`bun run` と `bun test` が通る空の App
-2. `core/credentials.ts`: `.pgpass` / `.pg_service.conf` のパーサとテスト（fixture を用意）。`my_print_defaults` 連携もここで
-3. `ui/ConnectionList.tsx` と connections モード。接続一覧が出るところまで
-4. `core/connection.ts`: `Bun.SQL` 接続と read-only 強制・検証
-5. `core/dialect/`: `quoteIdent` とカタログ取得クエリ。`quoteIdent` のテストを厚く書く
-6. `ui/CatalogTree.tsx` と catalog モード
-7. `core/query.ts` と `ui/ResultGrid.tsx`。自前ウィンドウイング、横スクロール、ページング
-8. `core/highlight.ts` と方言補正
-9. `core/query-editor.ts` と `ui/QueryWorkbench.tsx`: Ink 内 editor と result の分割表示
-10. `core/history.ts`、`core/clipboard.ts`、help、StatusBar の仕上げ
-11. `bun build --compile src/index.tsx --outfile sqlclient` でバイナリ化し、README を書く
-
 ## 検証方法
 
 - `bun test` が全て通ること
 
 ### PostgreSQL の検証環境
 
-この開発機に PostgreSQL は無い（`psql` 未インストール、`~/.pgpass` と `~/.pg_service.conf` も未作成）。移行はこれからなので、**PostgreSQL の検証はローカルの Docker で行う**。
+PostgreSQLの接続検証はローカルのDockerで行う。
 
 - `docker run --rm -d --name sqlclient-pg -e POSTGRES_PASSWORD=<任意> -p 15432:5432 postgres:17` 相当でコンテナを起動する
-- 検証用の `~/.pg_service.conf` と `~/.pgpass` を**このコンテナ向けに作成してよい**（`.pgpass` は `chmod 600` を忘れないこと。パーミッションが緩いと libpq 互換の挙動として無視する仕様なので、その挙動の確認にも使える）
-- サンプルテーブルは検証に必要な最小限を自分で作る。**このコンテナ内での DDL / INSERT は検証のためなので構わない**（read-only 強制の対象はアプリが張る接続であって、セットアップではない）
+- `PGSERVICEFILE` / `PGPASSFILE` には一時ファイルを指定し、利用者のcredential storeを変更しない
+- セットアップ用管理者と、アプリ接続用のread-onlyユーザーを分ける
 
 ### MySQL の検証環境
 
-- **読み取りの動作確認**は staging と、grant が参照系だけと確認できる production login-path に対して行ってよい。production では grant・read-only状態・schema一覧以外を検証しない
-- **read-only 強制の確認**（書き込みが拒否されること）は、`docker run --rm -d --name sqlclient-mysql -e MYSQL_ROOT_PASSWORD=<任意> -p 13306:3306 mysql:8.4` 相当のローカルコンテナに対して行う
+- 接続検証は `docker run --rm -d --name sqlclient-mysql -e MYSQL_ROOT_PASSWORD=<任意> -p 13306:3306 mysql:8.4` 相当のローカルコンテナに対して行う
 - そのコンテナ用の login-path は、**`MYSQL_TEST_LOGIN_FILE` に一時パスを設定したうえで** `mysql_config_editor set` で作る。**利用者本人の `~/.mylogin.cnf` を書き換えてはならない**
+- セットアップ用管理者と、アプリ接続用のread-onlyユーザーを分ける
 
 検証が終わったらコンテナを落とし、検証用に作った一時ファイルを削除する。
 
 ### 手動確認項目
 
-- 以下を手動確認し、README の「動作確認済み」に記録する
-  - MySQL（login-path 経由、staging）と PostgreSQL（ローカル Docker）の両方で接続一覧に出て、接続できる
-  - Header に read-only バッジが出る
-  - **書き込みが実際に拒否されること**を、MySQL と PostgreSQL の**両方で**確認する。ただし**この確認は必ずローカルの Docker に対して行う**（read-only 強制にバグがあった場合、共有環境に書き込みが通ってしまうため。使い捨てのコンテナならバグが出ても無害）
+- 以下を手動確認し、README の「動作確認」に記録する
+  - MySQL（login-path経由）とPostgreSQL（service経由）の両方で接続一覧に出て、接続できる
+  - Header に接続名 / engine / schema / tableが出る
+  - read-onlyユーザーでは書き込みがDB権限エラーになる。この確認はローカルDockerだけで行う
   - カタログを辿ってテーブルのデータが表示され、`n` / `p` でページングできる
   - `e` で Ink 内 editor が開き、`Cmd+Enter` で実行後も SQL と result が同時表示される
   - `NULL` と文字列 `'NULL'` が見分けられる
   - 資格情報が画面のどこにも出ない
-- table dataや任意SQLの検証は staging（`ieul_staging` 系 / `taf_staging` 系）またはローカルDockerで行う
+- table dataや任意SQLの検証はローカルDockerまたは安全性を確認済みのstagingで行う
 
 ## コーディング規約
 
 - TypeScript strict。`any` は使わない。外部入力（設定ファイル、DB の値）は `unknown` から絞り込む
 - `core/` は Ink と React に依存しない純粋なモジュールにする
 - 非同期処理は必ず try / catch し、失敗は戻り値か `warnings` で伝える
-- コメントは「なぜ」を書く。方言差・read-only 強制・資格情報の取り回しには必ず理由を書く
+- コメントは「なぜ」を書く。方言差・資格情報の取り回しには必ず理由を書く
 - フォーマットは Prettier 既定に従う
-- コミットは作業手順の単位で分ける
+- コミットは論理的な変更単位で分ける
 
 ## やってはいけないこと
 
-- 書き込み系 SQL を実行しうる経路を作る
-- read-only 強制を、クライアント側の SQL 文字列検査で代替する
+- アプリのsession設定や表示を、書き込み防止の保証として扱う
+- ユーザーSQLを許可リスト判定または自動書き換えする
 - `.mylogin.cnf` を自前で復号する
 - 資格情報を画面・ログ・一時ファイル・エラーメッセージ・`AppState` に出す
 - 識別子を文字列連結でクエリに埋め込む（必ず `quoteIdent` を通す）
-- 結果セット全体をメモリに載せる
+- 受信後の任意SQL結果を2000行を超えてstateへ保持する
 - Ink の `<Static>` を、更新のある行の描画に使う
 - `setRawMode` を直接呼ぶ（Ink の入力管理を使う）
 - 指示にない UI ライブラリを追加する
@@ -476,11 +455,11 @@ export interface AppState {
 - 色は Ink の標準色名のみ使う
 - 端末幅が 80 未満のときは概算行数とデータ型の列を省略する
 - 履歴は直近 500 件を `~/.config/sqlclient/history.jsonl` に保存する
-- テストが書きにくい箇所は fixture を増やしてでもテストを書く。UI のテストは不要
+- テストが書きにくい箇所は純粋関数へ切り出し、fixtureを増やしてテストする
 
 ## 完了の定義
 
-- 作業手順のすべてが完了し、コミットされている
 - `bun test` が通る
-- 検証方法の手動確認がすべて済み、README に記録されている
+- typecheck、Prettier check、単一バイナリbuildが通る
+- README、仕様書、実装の安全性に関する表現が一致している
 - `sqlclient` バイナリが生成され、起動して接続一覧が表示される
