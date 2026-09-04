@@ -97,6 +97,14 @@ export async function listTables(
   });
 }
 
+export async function selectSchema(
+  session: DatabaseSession,
+  dialect: Dialect,
+  schema: string,
+): Promise<void> {
+  await session.executeCatalog(dialect.selectSchema(schema));
+}
+
 export async function listColumns(
   session: DatabaseSession,
   dialect: Dialect,

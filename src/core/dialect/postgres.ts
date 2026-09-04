@@ -54,6 +54,7 @@ SELECT
 FROM information_schema.columns AS columns
 WHERE columns.table_schema = $1 AND columns.table_name = $2
 ORDER BY columns.ordinal_position`,
+  selectSchema: (schema) => `SET search_path TO ${quotePostgresIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quotePostgresIdent(schema)}.${quotePostgresIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
   readOnlyStatements: () => ["SET default_transaction_read_only = on"],

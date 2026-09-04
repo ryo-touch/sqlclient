@@ -16,7 +16,12 @@ import {
   sanitizeDatabaseError,
   type DatabaseSession,
 } from "./core/connection.ts";
-import { listColumns, listSchemas, listTables } from "./core/catalog.ts";
+import {
+  listColumns,
+  listSchemas,
+  listTables,
+  selectSchema,
+} from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
 import { editQuery } from "./core/editor.ts";
@@ -313,6 +318,7 @@ export function App() {
       try {
         if (node.kind === "schema") {
           dispatch({ type: "catalogLoading", message: "Loading tables…" });
+          await selectSchema(connected, dialect, node.value.schema);
           const tables = await listTables(
             connected,
             dialect,

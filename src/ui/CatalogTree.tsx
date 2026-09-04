@@ -38,7 +38,9 @@ export function CatalogTree({
   selectedTable,
 }: CatalogTreeProps) {
   const { stdout } = useStdout();
-  const narrow = (stdout.columns ?? 80) < 80;
+  const terminalWidth = stdout.columns ?? 80;
+  const narrow = terminalWidth < 100;
+  const leftContentWidth = Math.max(16, Math.floor(terminalWidth * 0.6) - 8);
   const availableRows = Math.max(3, (stdout.rows ?? 24) - 8);
   const nodeRange = visibleRange(
     nodes.length,
@@ -54,7 +56,7 @@ export function CatalogTree({
   return (
     <Box>
       <Box
-        width="45%"
+        width="60%"
         flexDirection="column"
         borderStyle="single"
         borderColor={activePane === "schemas" ? "cyan" : undefined}
@@ -77,7 +79,7 @@ export function CatalogTree({
                 color={expanded ? "cyan" : undefined}
               >
                 {selected ? ">" : " "} {expanded ? "▾" : "▸"}{" "}
-                {truncate(node.value.schema, 28)}
+                {truncate(node.value.schema, leftContentWidth - 4)}
               </Text>
             );
           }
@@ -92,7 +94,7 @@ export function CatalogTree({
               color={node.value.table === selectedTable ? "green" : undefined}
             >
               {selected ? ">" : " "} └{" "}
-              {truncate(node.value.table, narrow ? 25 : 20)}
+              {truncate(node.value.table, leftContentWidth - 5)}
               {narrow ? "" : rows}
             </Text>
           );
@@ -102,7 +104,7 @@ export function CatalogTree({
         ) : null}
       </Box>
       <Box
-        width="55%"
+        width="40%"
         flexDirection="column"
         borderStyle="single"
         borderColor={activePane === "tables" ? "cyan" : undefined}

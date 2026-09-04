@@ -36,6 +36,7 @@ SELECT
 FROM information_schema.columns
 WHERE table_schema = ? AND table_name = ?
 ORDER BY ordinal_position`,
+  selectSchema: (schema) => `USE ${quoteMysqlIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quoteMysqlIdent(schema)}.${quoteMysqlIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
   readOnlyStatements: () => ["SET SESSION TRANSACTION READ ONLY"],

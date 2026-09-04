@@ -28,6 +28,10 @@ Bun.SQL 1.4には行streamingやmaxRows APIがないため、「SQLを変えな�
 
 端末入力は複数キーが1チャンクで届くことがあり、イベントhandlerが捕捉したindexをdispatchすると同一render中の更新が失われる。移動量とitem数をactionにして、最新stateへのclampをreducer側で行う。
 
+## catalogのschemaを接続の既定値にする
+
+login-pathはdatabaseを保持できないため、MySQL接続直後の既定databaseは利用者がcatalogで見ているschemaと一致しない。schemaを開く操作でMySQLは `USE`、PostgreSQLは `search_path` を同じreserved sessionへ設定し、手書きSQLの非修飾table名が画面上の文脈と一致するようにした。
+
 ## 表示量を端末サイズで制限する
 
 Inkの `Static` は追記専用で選択行の更新に向かない。catalog、history、resultはいずれも選択位置の周辺だけをrenderし、resultのcolumnも端末幅へ収まる分だけ作る。DB取得上限だけではReact要素数を抑えられないため、取得・保持・描画を別々に制限している。

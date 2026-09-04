@@ -35,6 +35,13 @@ describe("dialect queries", () => {
     );
   });
 
+  test("quotes the selected default schema", () => {
+    expect(dialectFor("mysql").selectSchema("odd`db")).toBe("USE `odd``db`");
+    expect(dialectFor("postgres").selectSchema('odd"db')).toBe(
+      'SET search_path TO "odd""db"',
+    );
+  });
+
   test("uses adapter-specific value placeholders", () => {
     expect(dialectFor("mysql").listTables("ignored")).toContain(
       "table_schema = ?",

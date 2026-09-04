@@ -72,6 +72,8 @@ chmod 600 ~/.pgpass
 
 クライアント側でSQL文字列を許可リスト判定しているわけではありません。`$EDITOR` から任意SQLを送れますが、書き込みはサーバのread-onlyセッションによって拒否されます。
 
+catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定schemaにも設定します。以降は `SELECT * FROM table_name` のようにschema名を省略したSQLも、選択中のschemaに対して実行されます。
+
 ## キーバインド
 
 | Key             | 動作                                      |

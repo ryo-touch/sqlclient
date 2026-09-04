@@ -1,4 +1,4 @@
-import { Text } from "ink";
+import { Text, useStdout } from "ink";
 
 import type { Mode, QueryError } from "../types.ts";
 
@@ -25,6 +25,21 @@ function keys(mode: Mode): string {
   }
 }
 
+function compactKeys(mode: Mode): string {
+  switch (mode) {
+    case "connections":
+      return "j/k move Enter connect / filter ? help q quit";
+    case "catalog":
+      return "j/k move h/l pane Enter open s sys y copy e SQL ? help q back";
+    case "result":
+      return "j/k rows h/l cols n/p page y copy e SQL r rerun Tab query q back";
+    case "query":
+      return "j/k history Enter run e SQL Tab catalog q back";
+    case "help":
+      return "q/Esc close help";
+  }
+}
+
 export function StatusBar({
   mode,
   running,
@@ -32,6 +47,7 @@ export function StatusBar({
   message,
   error,
 }: StatusBarProps) {
+  const { stdout } = useStdout();
   if (running) {
     return (
       <Text color="cyan">
@@ -41,5 +57,9 @@ export function StatusBar({
   }
   if (error) return <Text color="red">{error.message.split(/\r?\n/u)[0]}</Text>;
   if (message) return <Text color="green">{message}</Text>;
-  return <Text dimColor>{keys(mode)}</Text>;
+  return (
+    <Text dimColor>
+      {(stdout.columns ?? 80) < 100 ? compactKeys(mode) : keys(mode)}
+    </Text>
+  );
 }

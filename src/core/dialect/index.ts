@@ -8,6 +8,7 @@ export interface Dialect {
   listSchemas(includeSystem?: boolean): string;
   listTables(schema: string): string;
   listColumns(schema: string, table: string): string;
+  selectSchema(schema: string): string;
   selectAll(
     schema: string,
     table: string,
