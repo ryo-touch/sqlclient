@@ -18,6 +18,7 @@ import { FilterInput } from "./ui/FilterInput.tsx";
 import { Header } from "./ui/Header.tsx";
 import { CatalogTree, type CatalogNode } from "./ui/CatalogTree.tsx";
 import { ResultGrid } from "./ui/ResultGrid.tsx";
+import { QueryPane } from "./ui/QueryPane.tsx";
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -327,8 +328,47 @@ export function App() {
         state.result
       )
         void runUserSql(state.result.sql);
-      else if (key.tab || input === "q" || key.escape)
+      else if (key.tab) dispatch({ type: "setMode", mode: "query" });
+      else if (input === "q" || key.escape)
         dispatch({ type: "setMode", mode: "catalog" });
+      return;
+    }
+
+    if (state.mode === "query") {
+      if (input === "j" || key.downArrow)
+        dispatch({
+          type: "moveSelection",
+          delta: 1,
+          itemCount: state.history.length,
+        });
+      else if (input === "k" || key.upArrow)
+        dispatch({
+          type: "moveSelection",
+          delta: -1,
+          itemCount: state.history.length,
+        });
+      else if (input === "g")
+        dispatch({
+          type: "moveToBoundary",
+          boundary: "first",
+          itemCount: state.history.length,
+        });
+      else if (input === "G")
+        dispatch({
+          type: "moveToBoundary",
+          boundary: "last",
+          itemCount: state.history.length,
+        });
+      else if (key.return || input === "r") {
+        const selected = state.history[state.selectedIndex];
+        const sql = selected?.sql ?? state.result?.sql;
+        if (sql) void runUserSql(sql);
+      } else if (key.tab) dispatch({ type: "setMode", mode: "catalog" });
+      else if (input === "q" || key.escape)
+        dispatch({
+          type: "setMode",
+          mode: state.result ? "result" : "catalog",
+        });
       return;
     }
 
@@ -345,8 +385,8 @@ export function App() {
         else if (input !== "" && !key.ctrl && !key.meta)
           dispatch({ type: "appendFilter", text: input });
       } else if (input === "/") dispatch({ type: "beginFilter" });
-      else if (key.tab && state.result)
-        dispatch({ type: "setMode", mode: "result" });
+      else if (key.tab)
+        dispatch({ type: "setMode", mode: state.result ? "result" : "query" });
       else if (input === "j" || key.downArrow)
         dispatch({ type: "moveSelection", delta: 1, itemCount });
       else if (input === "k" || key.upArrow)
@@ -446,15 +486,22 @@ export function App() {
             selectedSchema={state.selectedSchema}
             selectedTable={state.selectedTable}
           />
-        ) : state.result ? (
+        ) : state.mode === "result" && state.result ? (
           <ResultGrid
             result={state.result}
             selectedRow={state.selectedIndex}
             selectedColumn={state.selectedColumnIndex}
             columnOffset={state.columnOffset}
           />
+        ) : state.current ? (
+          <QueryPane
+            engine={state.current.engine}
+            sql={state.result?.sql ?? ""}
+            history={state.history}
+            selectedIndex={state.selectedIndex}
+          />
         ) : (
-          <Text dimColor>No result.</Text>
+          <Text dimColor>No query.</Text>
         )}
       </Box>
       {state.mode === "connections" || state.mode === "catalog" ? (
@@ -472,7 +519,9 @@ export function App() {
           ? "j/k move · Enter connect · / filter · q quit"
           : state.mode === "catalog"
             ? "j/k move · h/l pane · Enter open · s system · Tab result · / filter · q back"
-            : "j/k rows · h/l columns · n/p page · r rerun · Tab/q catalog"}
+            : state.mode === "result"
+              ? "j/k rows · h/l columns · n/p page · r rerun · Tab query · q catalog"
+              : "j/k history · Enter/r run · Tab catalog · q result"}
       </Text>
     </Box>
   );
