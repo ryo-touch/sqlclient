@@ -743,6 +743,13 @@ export function App() {
       <Header
         current={state.current}
         schema={state.selectedSchema}
+        table={
+          state.mode === "catalog"
+            ? state.selectedTable
+            : state.resultSource?.kind === "table"
+              ? state.resultSource.table
+              : undefined
+        }
         readOnlyVerified={state.readOnlyVerified}
       />
       <Box marginTop={1} flexDirection="column">
