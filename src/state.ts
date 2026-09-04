@@ -4,11 +4,19 @@ import type {
   ConnectionSummary,
   HistoryEntry,
   Mode,
+  QueryFocus,
   QueryError,
   ResultSet,
   SchemaRef,
   TableRef,
 } from "./types.ts";
+import {
+  deleteQueryBackward as deleteBackward,
+  deleteQueryForward as deleteForward,
+  insertQueryText as insertText,
+  moveQueryCursor as moveCursor,
+  type CursorDirection,
+} from "./core/query-editor.ts";
 
 export interface AppState {
   connections: ConnectionListItem[];
@@ -35,6 +43,9 @@ export interface AppState {
   selectedTable?: string;
   catalogPane: "schemas" | "tables";
   showSystemSchemas: boolean;
+  queryDraft: string;
+  queryCursor: number;
+  queryFocus: QueryFocus;
   resultSource?:
     { kind: "table"; schema: string; table: string } | { kind: "query" };
 }
@@ -56,6 +67,9 @@ export const initialState: AppState = {
   running: false,
   catalogPane: "schemas",
   showSystemSchemas: false,
+  queryDraft: "",
+  queryCursor: 0,
+  queryFocus: "editor",
 };
 
 export type Action =
@@ -96,6 +110,13 @@ export type Action =
   | { type: "historyRecorded"; entry: HistoryEntry }
   | { type: "showHelp" }
   | { type: "closeHelp" }
+  | { type: "openQueryEditor"; initialSql: string }
+  | { type: "insertQueryText"; text: string }
+  | { type: "deleteQueryBackward" }
+  | { type: "deleteQueryForward" }
+  | { type: "moveQueryCursor"; direction: CursorDirection }
+  | { type: "setQueryFocus"; focus: QueryFocus }
+  | { type: "loadHistoryQuery"; sql: string }
   | { type: "showError"; error: QueryError }
   | { type: "clearError" };
 
@@ -171,6 +192,9 @@ export function reducer(state: AppState, action: Action): AppState {
         resultSource: undefined,
         selectedSchema: undefined,
         selectedTable: undefined,
+        queryDraft: "",
+        queryCursor: 0,
+        queryFocus: "editor",
         mode: "catalog",
         previousMode: "connections",
         selectedIndex: 0,
@@ -205,6 +229,9 @@ export function reducer(state: AppState, action: Action): AppState {
         resultSource: undefined,
         selectedSchema: undefined,
         selectedTable: undefined,
+        queryDraft: "",
+        queryCursor: 0,
+        queryFocus: "editor",
         error: undefined,
         message: undefined,
       };
@@ -263,11 +290,17 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         result: action.result,
         resultSource: action.source,
-        mode: "result",
-        previousMode: "catalog",
+        mode: state.mode === "query" ? "query" : "result",
+        previousMode: state.mode === "query" ? state.previousMode : "catalog",
         selectedIndex: 0,
         selectedColumnIndex: 0,
         columnOffset: 0,
+        queryDraft:
+          action.source.kind === "query" ? action.result.sql : state.queryDraft,
+        queryCursor:
+          action.source.kind === "query"
+            ? action.result.sql.length
+            : state.queryCursor,
         running: false,
         message: `${action.result.rowCount} rows in ${action.result.elapsedMs.toFixed(1)} ms`,
         error: undefined,
@@ -301,6 +334,15 @@ export function reducer(state: AppState, action: Action): AppState {
         filter: "",
         filterEditing: false,
         error: undefined,
+        queryDraft:
+          action.mode === "query" && state.queryDraft === ""
+            ? (state.result?.sql ?? "")
+            : state.queryDraft,
+        queryCursor:
+          action.mode === "query" && state.queryDraft === ""
+            ? (state.result?.sql.length ?? 0)
+            : state.queryCursor,
+        queryFocus: action.mode === "query" ? "editor" : state.queryFocus,
       };
     case "historyLoaded":
       return {
@@ -320,6 +362,54 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         mode: state.previousMode ?? "connections",
         previousMode: undefined,
+      };
+    case "openQueryEditor": {
+      const queryDraft = state.queryDraft || action.initialSql;
+      return {
+        ...state,
+        previousMode: state.mode,
+        mode: "query",
+        queryDraft,
+        queryCursor: queryDraft.length,
+        queryFocus: "editor",
+        selectedIndex: 0,
+        error: undefined,
+      };
+    }
+    case "insertQueryText": {
+      const edited = insertText(
+        state.queryDraft,
+        state.queryCursor,
+        action.text,
+      );
+      return { ...state, queryDraft: edited.sql, queryCursor: edited.cursor };
+    }
+    case "deleteQueryBackward": {
+      const edited = deleteBackward(state.queryDraft, state.queryCursor);
+      return { ...state, queryDraft: edited.sql, queryCursor: edited.cursor };
+    }
+    case "deleteQueryForward": {
+      const edited = deleteForward(state.queryDraft, state.queryCursor);
+      return { ...state, queryDraft: edited.sql, queryCursor: edited.cursor };
+    }
+    case "moveQueryCursor":
+      return {
+        ...state,
+        queryCursor: moveCursor(
+          state.queryDraft,
+          state.queryCursor,
+          action.direction,
+        ),
+      };
+    case "setQueryFocus":
+      return { ...state, queryFocus: action.focus, selectedIndex: 0 };
+    case "loadHistoryQuery":
+      return {
+        ...state,
+        queryDraft: action.sql,
+        queryCursor: action.sql.length,
+        queryFocus: "editor",
+        selectedIndex: 0,
       };
     case "showError":
       return {

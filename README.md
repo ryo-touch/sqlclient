@@ -7,7 +7,6 @@ MySQL / PostgreSQLへ参照専用で接続する、Ink製のターミナルSQL�
 - macOS 26以降
 - Bun 1.4以降
 - MySQLを使う場合は `my_print_defaults` と `mysql_config_editor`
-- SQL編集用の `$EDITOR`。未設定時は `nvim`、次に `vim`
 
 ## インストールと起動
 
@@ -70,7 +69,7 @@ chmod 600 ~/.pgpass
 
 接続直後にDBサーバのセッションをread-onlyへ変更し、設定値を再取得して確認できた接続だけを利用します。MySQLでsession設定が反映されない場合に限り、現在ユーザーのgrantが既知の参照系権限だけであることを `SHOW GRANTS` で確認します。未知のgrant、role、書き込み権限、grant optionが含まれる接続は拒否します。Headerに `[read-only]` が表示されていない接続ではクエリを実行できません。
 
-クライアント側でSQL文字列を許可リスト判定しているわけではありません。`$EDITOR` から任意SQLを送れますが、書き込みはサーバのread-onlyセッションによって拒否されます。
+クライアント側でSQL文字列を許可リスト判定しているわけではありません。Ink内のSQL editorから任意SQLを送れますが、書き込みはサーバのread-onlyセッションによって拒否されます。
 
 catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定schemaにも設定します。以降は `SELECT * FROM table_name` のようにschema名を省略したSQLも、選択中のschemaに対して実行されます。
 
@@ -83,7 +82,8 @@ catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定s
 | `g` / `G`       | 先頭 / 末尾                               |
 | `Enter`         | 接続・schema展開・table表示・履歴再実行   |
 | `Tab`           | catalog → result → queryを巡回            |
-| `e`             | `$EDITOR` を開き、保存したSQLを実行       |
+| `e`             | 左側のSQL editorを開く                    |
+| `Cmd+Enter`     | editorのSQLを実行                         |
 | `r`             | 直近または選択中のクエリを再実行          |
 | `n` / `p`       | table結果の次 / 前ページ                  |
 | `y`             | 選択セルまたはtable名を `pbcopy` へコピー |
@@ -94,11 +94,9 @@ catalogでschemaを `Enter` すると、そのschemaを現在の接続の既定s
 
 クエリ履歴は新しい順に最大500件を `~/.config/sqlclient/history.jsonl` へ0600で保存します。
 
-### cmuxでのエディタ表示
+### SQL editorとresult
 
-cmux上で `e` を押すと、現在のresult／catalogを元paneに残したまま、右側の別paneへ `$EDITOR` を開きます。エディタを終了する必要はなく、保存するたびにSQLが元paneで実行され、結果が更新されます。エディタを終了した後に再度 `e` を押した場合は、作成済みの右paneを再利用します。
-
-cmux外では従来どおり現在のterminalを一時的に `$EDITOR` へ明け渡し、保存してエディタを終了した時点でSQLを実行します。
+`e` を押すとInk内の分割画面へ移り、左側で複数行SQLを編集できます。右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor、result、historyのfocusを切り替えます。
 
 ## 既知の制約
 
@@ -118,9 +116,9 @@ cmux外では従来どおり現在のterminalを一時的に `$EDITOR` へ明け
 - MySQL 8.4 DockerとPostgreSQL 17 Dockerを同時に一覧表示し、両方へ接続
 - 両Dockerで永続書き込みがread-onlyエラーになることを確認
 - 両Dockerの405行tableで200 / 200 / 5行のページングを確認
-- PostgreSQL Dockerで `$EDITOR` の保存後にSQLが実行され、Ink画面が再描画されることを確認
+- Ink内の左editorで複数行SQLを編集し、`Cmd+Enter` 後も右resultと同時表示されることを確認
 - 両Dockerで実行中クエリのserver-side cancelを確認
 - `NULL` がdim表示され、文字列 `"NULL"` が通常表示されることを確認
 - 接続情報のpasswordがconnections、Header、catalog、result、query、errorのいずれにも表示されないことを確認
 
-検証用Dockerコンテナと一時資格情報ファイルは確認後に削除しています。production DBには接続していません。
+検証用Dockerコンテナと一時資格情報ファイルは確認後に削除しています。production DBではgrant・read-only確認とschema参照だけを行い、書き込みやtable dataの取得は行っていません。

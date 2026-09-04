@@ -73,4 +73,47 @@ describe("application reducer", () => {
     expect(help.mode).toBe("help");
     expect(reducer(help, { type: "closeHelp" }).mode).toBe("result");
   });
+
+  test("edits a query draft through reducer operations", () => {
+    const opened = reducer(initialState, {
+      type: "openQueryEditor",
+      initialSql: "SELECT 1",
+    });
+    const inserted = reducer(opened, {
+      type: "insertQueryText",
+      text: "\nFROM dual",
+    });
+    const moved = reducer(inserted, {
+      type: "moveQueryCursor",
+      direction: "home",
+    });
+    expect(inserted.queryDraft).toBe("SELECT 1\nFROM dual");
+    expect(moved.queryCursor).toBe(9);
+    expect(moved.queryFocus).toBe("editor");
+  });
+
+  test("keeps the split query workbench open after execution", () => {
+    const opened = reducer(initialState, {
+      type: "openQueryEditor",
+      initialSql: "SELECT 1",
+    });
+    const completed = reducer(opened, {
+      type: "querySucceeded",
+      source: { kind: "query" },
+      result: {
+        columns: ["value"],
+        rows: [[1]],
+        rowCount: 1,
+        hasMore: false,
+        elapsedMs: 1,
+        sql: "SELECT 1",
+        offset: 0,
+      },
+    });
+    expect(completed).toMatchObject({
+      mode: "query",
+      queryDraft: "SELECT 1",
+      result: { rows: [[1]] },
+    });
+  });
 });

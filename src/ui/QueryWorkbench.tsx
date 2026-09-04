@@ -1,0 +1,197 @@
+import type { ComponentProps, ReactNode } from "react";
+import { Box, Text, useStdout } from "ink";
+
+import { highlightSql, type SqlSegmentName } from "../core/highlight.ts";
+import type { Engine, HistoryEntry, QueryFocus, ResultSet } from "../types.ts";
+import { formatDateTime } from "../util/format.ts";
+import { ResultGrid } from "./ResultGrid.tsx";
+
+interface QueryWorkbenchProps {
+  engine: Engine;
+  sql: string;
+  cursor: number;
+  focus: QueryFocus;
+  result?: ResultSet;
+  history: readonly HistoryEntry[];
+  selectedIndex: number;
+  selectedColumn: number;
+  columnOffset: number;
+}
+
+function colorFor(name: SqlSegmentName): ComponentProps<typeof Text>["color"] {
+  switch (name) {
+    case "keyword":
+      return "cyan";
+    case "function":
+      return "blue";
+    case "number":
+      return "yellow";
+    case "string":
+      return "green";
+    case "comment":
+      return "gray";
+    case "special":
+    case "bracket":
+      return "magenta";
+    case "identifier":
+    case "whitespace":
+      return undefined;
+  }
+}
+
+function highlightedEditor(
+  sql: string,
+  cursor: number,
+  engine: Engine,
+): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let offset = 0;
+  for (const [index, segment] of highlightSql(sql, engine).entries()) {
+    const relativeCursor = cursor - offset;
+    const color = colorFor(segment.name);
+    if (relativeCursor >= 0 && relativeCursor < segment.content.length) {
+      nodes.push(
+        <Text color={color} key={`${index}:before`}>
+          {segment.content.slice(0, relativeCursor)}
+        </Text>,
+        <Text color={color} inverse key={`${index}:cursor`}>
+          {segment.content[relativeCursor]}
+        </Text>,
+        <Text color={color} key={`${index}:after`}>
+          {segment.content.slice(relativeCursor + 1)}
+        </Text>,
+      );
+    } else {
+      nodes.push(
+        <Text color={color} key={index}>
+          {segment.content}
+        </Text>,
+      );
+    }
+    offset += segment.content.length;
+  }
+  if (cursor === sql.length) {
+    nodes.push(
+      <Text inverse key="cursor:end">
+        {" "}
+      </Text>,
+    );
+  }
+  return nodes;
+}
+
+function visibleEditor(sql: string, cursor: number, lineLimit: number) {
+  const lines = sql.split("\n");
+  const cursorLine = sql.slice(0, cursor).split("\n").length - 1;
+  const startLine = Math.max(
+    0,
+    Math.min(cursorLine - Math.floor(lineLimit / 2), lines.length - lineLimit),
+  );
+  const visibleLines = lines.slice(startLine, startLine + lineLimit);
+  const removedLength = lines
+    .slice(0, startLine)
+    .reduce((length, line) => length + line.length + 1, 0);
+  return {
+    sql: visibleLines.join("\n"),
+    cursor: cursor - removedLength,
+    above: startLine,
+    below: Math.max(0, lines.length - startLine - visibleLines.length),
+  };
+}
+
+function preview(sql: string, width: number): string {
+  const firstLine = sql.split(/\r?\n/u)[0] ?? "";
+  return firstLine.length > width
+    ? `${firstLine.slice(0, Math.max(0, width - 1))}…`
+    : firstLine;
+}
+
+export function QueryWorkbench({
+  engine,
+  sql,
+  cursor,
+  focus,
+  result,
+  history,
+  selectedIndex,
+  selectedColumn,
+  columnOffset,
+}: QueryWorkbenchProps) {
+  const { stdout } = useStdout();
+  const terminalWidth = stdout.columns ?? 100;
+  const terminalRows = stdout.rows ?? 24;
+  const editorLines = Math.max(5, Math.floor(terminalRows * 0.55));
+  const editor = visibleEditor(sql, cursor, editorLines);
+  const historyLimit = Math.max(2, terminalRows - editorLines - 8);
+  const visibleHistory = history.slice(0, historyLimit);
+  const resultWidth = Math.max(30, Math.floor(terminalWidth * 0.58) - 4);
+  const historyPreviewWidth = Math.max(
+    8,
+    Math.floor(terminalWidth * 0.42) - 17,
+  );
+
+  return (
+    <Box>
+      <Box width="42%" flexDirection="column" paddingRight={1}>
+        <Box
+          borderStyle="single"
+          borderColor={focus === "editor" ? "cyan" : undefined}
+          paddingX={1}
+          flexDirection="column"
+          minHeight={editorLines + 2}
+        >
+          <Text bold>SQL · Cmd+Enter run</Text>
+          {editor.above > 0 ? (
+            <Text dimColor>… {editor.above} lines above</Text>
+          ) : null}
+          <Text>{highlightedEditor(editor.sql, editor.cursor, engine)}</Text>
+          {editor.below > 0 ? (
+            <Text dimColor>… {editor.below} lines below</Text>
+          ) : null}
+        </Box>
+        <Box
+          borderStyle="single"
+          borderColor={focus === "history" ? "cyan" : undefined}
+          paddingX={1}
+          flexDirection="column"
+        >
+          <Text bold>History</Text>
+          {visibleHistory.length === 0 ? (
+            <Text dimColor>No history.</Text>
+          ) : null}
+          {visibleHistory.map((entry, index) => (
+            <Text
+              key={`${entry.executedAt.getTime()}:${index}`}
+              inverse={focus === "history" && index === selectedIndex}
+            >
+              {focus === "history" && index === selectedIndex ? ">" : " "}{" "}
+              {entry.ok ? "✓" : "✗"}{" "}
+              {formatDateTime(entry.executedAt).slice(11)}{" "}
+              {preview(entry.sql, historyPreviewWidth)}
+            </Text>
+          ))}
+        </Box>
+      </Box>
+      <Box
+        width="58%"
+        borderStyle="single"
+        borderColor={focus === "result" ? "cyan" : undefined}
+        paddingX={1}
+        flexDirection="column"
+      >
+        <Text bold>Result</Text>
+        {result ? (
+          <ResultGrid
+            result={result}
+            selectedRow={focus === "result" ? selectedIndex : -1}
+            selectedColumn={selectedColumn}
+            columnOffset={columnOffset}
+            availableWidth={resultWidth}
+          />
+        ) : (
+          <Text dimColor>Run SQL with Cmd+Enter.</Text>
+        )}
+      </Box>
+    </Box>
+  );
+}

@@ -24,7 +24,6 @@ MySQL / PostgreSQL に参照専用で接続し、スキーマとテーブルを�
 - Bun 1.4 以降
 - MySQL を使う場合: `my_print_defaults`（Homebrew の `mysql-client@8.4` に同梱）が使えること
 - PostgreSQL を使う場合: `~/.pg_service.conf` または環境変数で接続先が解決できること
-- `$EDITOR`（未設定時は nvim → vim の順にフォールバック）
 
 ## 技術スタック
 
@@ -45,7 +44,7 @@ MySQL / PostgreSQL に参照専用で接続し、スキーマとテーブルを�
 - 接続一覧の表示と選択（MySQL の login-path / PostgreSQL の service）
 - カタログ閲覧: スキーマ → テーブル → カラム
 - テーブルのデータ閲覧（自動生成の SELECT、ページング）
-- 任意 SQL の実行（本文の記述は `$EDITOR` に委譲する）
+- 任意 SQL の実行（Ink 内の SQL editor と result を左右に同時表示する）
 - 結果グリッドの表示、横スクロール、セル値のコピー
 - クエリ履歴
 
@@ -55,7 +54,7 @@ MySQL / PostgreSQL に参照専用で接続し、スキーマとテーブルを�
 - 接続情報の新規登録・編集（既存の標準ストアを読むだけ）
 - SQLite、その他の RDBMS
 - SSH トンネル
-- **アプリ内の複数行エディタ**（`$EDITOR` に委譲するため作らない）
+- IDE 相当の補完・診断・formatting
 - 結果の CSV / JSON エクスポート（v2 以降で検討）
 
 ## ディレクトリ構成
@@ -72,7 +71,7 @@ sqlclient/
       connection.ts      Bun.SQL のラップ。接続直後に read-only を強制する
       catalog.ts         スキーマ・テーブル・カラムの取得
       query.ts           クエリ実行、ページング、結果の正規化
-      editor.ts          $EDITOR 連携
+      query-editor.ts    複数行編集と cursor 操作の純粋関数
       history.ts         クエリ履歴の永続化
       highlight.ts       sql-highlight のラップと方言補正
       clipboard.ts       pbcopy
@@ -85,7 +84,7 @@ sqlclient/
       ConnectionList.tsx
       CatalogTree.tsx
       ResultGrid.tsx
-      QueryPane.tsx
+      QueryWorkbench.tsx
       StatusBar.tsx
       FilterInput.tsx
       Help.tsx
@@ -262,7 +261,7 @@ export interface Dialect {
 
 `sql.unsafe(string, values?)` を使ってよいのは次の 2 箇所に限る。それ以外でタグ付きテンプレートを避けないこと。
 
-- ユーザーが `$EDITOR` で書いた SQL の実行（そもそも任意の文字列なので、パラメータ化のしようがない）
+- ユーザーが Ink 内 editor で書いた SQL の実行（そもそも任意の文字列なので、パラメータ化のしようがない）
 - `quoteIdent` を通した識別子を組み込んだカタログ用クエリ。値部分は `sql.unsafe` の第 2 引数でバインドする
 
 - スキーマ一覧
@@ -281,23 +280,17 @@ export interface Dialect {
 - エラーはサーバのメッセージをそのまま `QueryError` に入れる。**接続 URL やパスワードが混ざらないよう、メッセージに接続文字列が含まれていないか確認してから state に渡す**
 - 値は `Bun.SQL` が返した JS 値をそのまま保持する。文字列化は `util/format.ts` の表示層でのみ行う。これにより `NULL` と文字列 `'NULL'` が区別できる
 
-## エディタ連携仕様
+## SQL editor 仕様
 
-`core/editor.ts`
+`core/query-editor.ts` と `ui/QueryWorkbench.tsx`
 
-- 一時ファイルを作り、**拡張子を `.sql` にする**（エディタに filetype を認識させるため）。現在のクエリがあれば内容として書き込む
-- `useApp()` の **`suspendTerminal`** で端末を明け渡してからエディタを起動する。**`setRawMode` を直接触ってはならない**（Ink は raw mode を参照カウントで管理しており、直接操作すると `useInput` と競合する）
-
-```ts
-const { suspendTerminal } = useApp();
-await suspendTerminal(async () => {
-  await runEditor(tmpPath);
-});
-```
-
-- エディタは `$EDITOR` → `nvim` → `vim` の順に解決する。`stdio` は継承する
-- エディタ終了後にファイルを読み戻し、**内容が空または変更なしなら実行しない**
-- 一時ファイルは実行後に削除する。**パスワードや接続情報を書き込んではならない**
+- query mode は左に複数行 SQL editor、右に直近の result を同時表示する
+- 通常の `Enter` は改行、macOS の `Cmd+Enter` は現在の SQL を実行する
+- 文字入力、複数行 paste、backspace / delete、上下左右・行頭・行末の cursor 移動を扱う
+- editor / result / history は `Tab` で focus を切り替える
+- editor の操作は reducer action として適用し、複数文字が 1 チャンクで届いても入力を失わない
+- SQL は `sql-highlight` の segment を Ink の `<Text>` として描画し、cursor 位置だけ inverse にする
+- 外部 editor、一時 SQL ファイル、cmux pane は作らない
 
 ## ハイライト仕様
 
@@ -331,8 +324,8 @@ await suspendTerminal(async () => {
 
 **query**
 
-- 直近に実行した SQL をハイライト付きで表示するペイン。ここでは編集しない（編集は `e` でエディタへ）
-- 下部にクエリ履歴を新しい順に表示し、選択して再実行できる
+- 左ペインにハイライト付きの複数行 SQL editor とクエリ履歴、右ペインに直近の result を表示する
+- `Cmd+Enter` で実行した後も query mode に留まり、SQL と結果を同時に確認できる
 
 **help**
 
@@ -345,7 +338,8 @@ await suspendTerminal(async () => {
 - `g` / `G`: 先頭 / 末尾
 - `Enter`: 選択して次の階層へ
 - `Tab`: catalog ⇄ result ⇄ query を巡回
-- `e`: `$EDITOR` を開いて SQL を書く。保存して終了すると実行する
+- `e`: query mode の SQL editor に移動する
+- `Cmd+Enter`: editor の SQL を実行する
 - `r`: 直近のクエリを再実行
 - `n` / `p`: 次ページ / 前ページ
 - `y`: 選択中のセル値（catalog ではテーブル名）を pbcopy でコピー
@@ -413,8 +407,8 @@ export interface AppState {
 5. `core/dialect/`: `quoteIdent` とカタログ取得クエリ。`quoteIdent` のテストを厚く書く
 6. `ui/CatalogTree.tsx` と catalog モード
 7. `core/query.ts` と `ui/ResultGrid.tsx`。自前ウィンドウイング、横スクロール、ページング
-8. `core/highlight.ts` と方言補正、`ui/QueryPane.tsx`
-9. `core/editor.ts`: `suspendTerminal` によるエディタ連携
+8. `core/highlight.ts` と方言補正
+9. `core/query-editor.ts` と `ui/QueryWorkbench.tsx`: Ink 内 editor と result の分割表示
 10. `core/history.ts`、`core/clipboard.ts`、help、StatusBar の仕上げ
 11. `bun build --compile src/index.tsx --outfile sqlclient` でバイナリ化し、README を書く
 
@@ -432,7 +426,7 @@ export interface AppState {
 
 ### MySQL の検証環境
 
-- **読み取りの動作確認**は staging（`ieul_staging` 系 / `taf_staging` 系）の login-path に対して行ってよい。**production（`ieul_production` / `taf_production`）には接続しない**
+- **読み取りの動作確認**は staging と、grant が参照系だけと確認できる production login-path に対して行ってよい。production では grant・read-only状態・schema一覧以外を検証しない
 - **read-only 強制の確認**（書き込みが拒否されること）は、`docker run --rm -d --name sqlclient-mysql -e MYSQL_ROOT_PASSWORD=<任意> -p 13306:3306 mysql:8.4` 相当のローカルコンテナに対して行う
 - そのコンテナ用の login-path は、**`MYSQL_TEST_LOGIN_FILE` に一時パスを設定したうえで** `mysql_config_editor set` で作る。**利用者本人の `~/.mylogin.cnf` を書き換えてはならない**
 
@@ -445,10 +439,10 @@ export interface AppState {
   - Header に read-only バッジが出る
   - **書き込みが実際に拒否されること**を、MySQL と PostgreSQL の**両方で**確認する。ただし**この確認は必ずローカルの Docker に対して行う**（read-only 強制にバグがあった場合、共有環境に書き込みが通ってしまうため。使い捨てのコンテナならバグが出ても無害）
   - カタログを辿ってテーブルのデータが表示され、`n` / `p` でページングできる
-  - `e` でエディタが開き、保存して終了するとクエリが実行され、画面が正しく再描画される
+  - `e` で Ink 内 editor が開き、`Cmd+Enter` で実行後も SQL と result が同時表示される
   - `NULL` と文字列 `'NULL'` が見分けられる
   - 資格情報が画面のどこにも出ない
-- 検証は staging（`ieul_staging` 系 / `taf_staging` 系）で行い、production では行わない
+- table dataや任意SQLの検証は staging（`ieul_staging` 系 / `taf_staging` 系）またはローカルDockerで行う
 
 ## コーディング規約
 
@@ -468,8 +462,7 @@ export interface AppState {
 - 識別子を文字列連結でクエリに埋め込む（必ず `quoteIdent` を通す）
 - 結果セット全体をメモリに載せる
 - Ink の `<Static>` を、更新のある行の描画に使う
-- `setRawMode` を直接呼ぶ（`suspendTerminal` を使う）
-- アプリ内に複数行エディタを実装する
+- `setRawMode` を直接呼ぶ（Ink の入力管理を使う）
 - 指示にない UI ライブラリを追加する
 
 ## 既定の判断
@@ -477,8 +470,6 @@ export interface AppState {
 迷ったら次のとおりにする。
 
 - 1 ページ 200 行、ユーザー SQL の取得上限 2000 行、クエリタイムアウト 30 秒
-- 一時ファイルは `Bun` の tmpdir 配下、拡張子 `.sql`、実行後に削除する
-- `$EDITOR` 未設定なら `nvim` → `vim`
 - 日時は `YYYY-MM-DD HH:mm:ss` のローカル時刻で表示する
 - フィルタは大文字小文字を区別しない
 - 色は Ink の標準色名のみ使う

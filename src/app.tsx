@@ -24,7 +24,6 @@ import {
 } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
-import { canUseCmuxEditor, editQuery, editQueryInCmux } from "./core/editor.ts";
 import { loadHistory, recordHistory } from "./core/history.ts";
 import { copyValue } from "./core/clipboard.ts";
 import type { HistoryEntry } from "./types.ts";
@@ -34,16 +33,14 @@ import { FilterInput } from "./ui/FilterInput.tsx";
 import { Header } from "./ui/Header.tsx";
 import { CatalogTree, type CatalogNode } from "./ui/CatalogTree.tsx";
 import { ResultGrid } from "./ui/ResultGrid.tsx";
-import { QueryPane } from "./ui/QueryPane.tsx";
+import { QueryWorkbench } from "./ui/QueryWorkbench.tsx";
 import { Help } from "./ui/Help.tsx";
 import { StatusBar } from "./ui/StatusBar.tsx";
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { exit, suspendTerminal } = useApp();
+  const { exit } = useApp();
   const session = useRef<DatabaseSession | undefined>(undefined);
-  const editorSurface = useRef<string | undefined>(undefined);
-  const editorAbort = useRef<AbortController | undefined>(undefined);
   const historyWrite = useRef<Promise<void>>(Promise.resolve());
   const [runningSeconds, setRunningSeconds] = useState(0);
 
@@ -97,7 +94,6 @@ export function App() {
 
   useEffect(
     () => () => {
-      editorAbort.current?.abort();
       void session.current?.close();
     },
     [],
@@ -276,7 +272,10 @@ export function App() {
 
   const copySelection = useCallback(async () => {
     let value: unknown;
-    if (state.mode === "result") {
+    if (
+      state.mode === "result" ||
+      (state.mode === "query" && state.queryFocus === "result")
+    ) {
       value =
         state.result?.rows[state.selectedIndex]?.[state.selectedColumnIndex];
     } else if (state.mode === "catalog" && state.catalogPane === "schemas") {
@@ -297,54 +296,6 @@ export function App() {
       });
     }
   }, [catalogNodes, state]);
-
-  const editAndRun = useCallback(async () => {
-    if (canUseCmuxEditor()) {
-      const controller = new AbortController();
-      editorAbort.current?.abort();
-      editorAbort.current = controller;
-      dispatch({
-        type: "showMessage",
-        message: "Editor opened on the right; save to run SQL",
-      });
-      try {
-        const result = await editQueryInCmux(
-          state.result?.sql ?? "",
-          runUserSql,
-          {
-            surfaceRef: editorSurface.current,
-            signal: controller.signal,
-          },
-        );
-        if (!controller.signal.aborted) {
-          editorSurface.current = result.surfaceRef;
-          dispatch({ type: "showMessage", message: "Editor pane closed" });
-        }
-        if (editorAbort.current === controller) editorAbort.current = undefined;
-        return;
-      } catch {
-        if (controller.signal.aborted) return;
-        if (editorAbort.current === controller) editorAbort.current = undefined;
-        dispatch({
-          type: "addWarnings",
-          warnings: ["cmux editor pane failed; using the current terminal"],
-        });
-      }
-    }
-
-    try {
-      let edited: Awaited<ReturnType<typeof editQuery>> | undefined;
-      await suspendTerminal(async () => {
-        edited = await editQuery(state.result?.sql ?? "");
-      });
-      if (edited?.changed && edited.sql) await runUserSql(edited.sql);
-    } catch {
-      dispatch({
-        type: "showError",
-        error: { message: "The SQL editor could not be opened" },
-      });
-    }
-  }, [runUserSql, state.result?.sql, suspendTerminal]);
 
   const openCatalogNode = useCallback(
     async (node: CatalogNode) => {
@@ -413,6 +364,53 @@ export function App() {
       }
       return;
     }
+
+    if (state.mode === "query" && state.queryFocus === "editor") {
+      if (key.eventType === "release") return;
+      if (key.return && (key.super || key.meta)) {
+        if (!state.running && state.queryDraft.trim() !== "") {
+          void runUserSql(state.queryDraft);
+        }
+      } else if (key.tab) {
+        dispatch({
+          type: "setQueryFocus",
+          focus: state.result ? "result" : "history",
+        });
+      } else if (key.escape) {
+        dispatch({
+          type: "setMode",
+          mode: state.result ? "result" : "catalog",
+        });
+      } else if (key.leftArrow) {
+        dispatch({ type: "moveQueryCursor", direction: "left" });
+      } else if (key.rightArrow) {
+        dispatch({ type: "moveQueryCursor", direction: "right" });
+      } else if (key.upArrow) {
+        dispatch({ type: "moveQueryCursor", direction: "up" });
+      } else if (key.downArrow) {
+        dispatch({ type: "moveQueryCursor", direction: "down" });
+      } else if (key.home) {
+        dispatch({ type: "moveQueryCursor", direction: "home" });
+      } else if (key.end) {
+        dispatch({ type: "moveQueryCursor", direction: "end" });
+      } else if (key.backspace) {
+        dispatch({ type: "deleteQueryBackward" });
+      } else if (key.delete) {
+        dispatch({ type: "deleteQueryForward" });
+      } else if (key.return) {
+        dispatch({ type: "insertQueryText", text: "\n" });
+      } else if (
+        input !== "" &&
+        !key.ctrl &&
+        !key.meta &&
+        !key.super &&
+        !key.hyper
+      ) {
+        dispatch({ type: "insertQueryText", text: input });
+      }
+      return;
+    }
+
     if (state.running) return;
 
     if (state.mode === "help") {
@@ -428,14 +426,19 @@ export function App() {
     }
 
     if (!state.filterEditing && input === "e" && state.current) {
-      void editAndRun();
+      dispatch({
+        type: "openQueryEditor",
+        initialSql: state.result?.sql ?? "",
+      });
       return;
     }
 
     if (
       !state.filterEditing &&
       input === "y" &&
-      (state.mode === "catalog" || state.mode === "result")
+      (state.mode === "catalog" ||
+        state.mode === "result" ||
+        (state.mode === "query" && state.queryFocus === "result"))
     ) {
       void copySelection();
       return;
@@ -454,9 +457,13 @@ export function App() {
           ? visibleConnections.length
           : state.mode === "result"
             ? (state.result?.rows.length ?? 0)
-            : state.catalogPane === "schemas"
-              ? catalogNodes.length
-              : visibleColumns.length;
+            : state.mode === "query"
+              ? state.queryFocus === "result"
+                ? (state.result?.rows.length ?? 0)
+                : state.history.length
+              : state.catalogPane === "schemas"
+                ? catalogNodes.length
+                : visibleColumns.length;
       for (const command of movementCommands) {
         if (command === "j" || command === "k") {
           dispatch({
@@ -541,40 +548,75 @@ export function App() {
     }
 
     if (state.mode === "query") {
-      if (input === "j" || key.downArrow)
-        dispatch({
-          type: "moveSelection",
-          delta: 1,
-          itemCount: state.history.length,
-        });
-      else if (input === "k" || key.upArrow)
-        dispatch({
-          type: "moveSelection",
-          delta: -1,
-          itemCount: state.history.length,
-        });
-      else if (input === "g")
-        dispatch({
-          type: "moveToBoundary",
-          boundary: "first",
-          itemCount: state.history.length,
-        });
-      else if (input === "G")
-        dispatch({
-          type: "moveToBoundary",
-          boundary: "last",
-          itemCount: state.history.length,
-        });
-      else if (key.return || input === "r") {
-        const selected = state.history[state.selectedIndex];
-        const sql = selected?.sql ?? state.result?.sql;
-        if (sql) void runUserSql(sql);
-      } else if (key.tab) dispatch({ type: "setMode", mode: "catalog" });
-      else if (input === "q" || key.escape)
-        dispatch({
-          type: "setMode",
-          mode: state.result ? "result" : "catalog",
-        });
+      if (state.queryFocus === "history") {
+        if (input === "j" || key.downArrow)
+          dispatch({
+            type: "moveSelection",
+            delta: 1,
+            itemCount: state.history.length,
+          });
+        else if (input === "k" || key.upArrow)
+          dispatch({
+            type: "moveSelection",
+            delta: -1,
+            itemCount: state.history.length,
+          });
+        else if (input === "g")
+          dispatch({
+            type: "moveToBoundary",
+            boundary: "first",
+            itemCount: state.history.length,
+          });
+        else if (input === "G")
+          dispatch({
+            type: "moveToBoundary",
+            boundary: "last",
+            itemCount: state.history.length,
+          });
+        else if (key.return) {
+          const selected = state.history[state.selectedIndex];
+          if (selected)
+            dispatch({ type: "loadHistoryQuery", sql: selected.sql });
+        } else if (input === "r") {
+          const selected = state.history[state.selectedIndex];
+          if (selected) void runUserSql(selected.sql);
+        } else if (key.tab || input === "e")
+          dispatch({ type: "setQueryFocus", focus: "editor" });
+        else if (input === "q" || key.escape)
+          dispatch({ type: "setMode", mode: "catalog" });
+      } else {
+        const rowCount = state.result?.rows.length ?? 0;
+        const columnCount = state.result?.columns.length ?? 0;
+        if (input === "j" || key.downArrow)
+          dispatch({ type: "moveSelection", delta: 1, itemCount: rowCount });
+        else if (input === "k" || key.upArrow)
+          dispatch({ type: "moveSelection", delta: -1, itemCount: rowCount });
+        else if (input === "g")
+          dispatch({
+            type: "moveToBoundary",
+            boundary: "first",
+            itemCount: rowCount,
+          });
+        else if (input === "G")
+          dispatch({
+            type: "moveToBoundary",
+            boundary: "last",
+            itemCount: rowCount,
+          });
+        else if (input === "h")
+          dispatch({ type: "moveResultColumn", delta: -1, columnCount });
+        else if (input === "l")
+          dispatch({ type: "moveResultColumn", delta: 1, columnCount });
+        else if (key.tab)
+          dispatch({
+            type: "setQueryFocus",
+            focus: state.history.length > 0 ? "history" : "editor",
+          });
+        else if (input === "e")
+          dispatch({ type: "setQueryFocus", focus: "editor" });
+        else if (input === "q" || key.escape)
+          dispatch({ type: "setMode", mode: "catalog" });
+      }
       return;
     }
 
@@ -615,8 +657,6 @@ export function App() {
           return;
         }
         const current = session.current;
-        editorAbort.current?.abort();
-        editorAbort.current = undefined;
         session.current = undefined;
         void current?.close();
         dispatch({ type: "returnedToConnections" });
@@ -704,11 +744,16 @@ export function App() {
             columnOffset={state.columnOffset}
           />
         ) : state.current ? (
-          <QueryPane
+          <QueryWorkbench
             engine={state.current.engine}
-            sql={state.result?.sql ?? ""}
+            sql={state.queryDraft}
+            cursor={state.queryCursor}
+            focus={state.queryFocus}
+            result={state.result}
             history={state.history}
             selectedIndex={state.selectedIndex}
+            selectedColumn={state.selectedColumnIndex}
+            columnOffset={state.columnOffset}
           />
         ) : (
           <Text dimColor>No query.</Text>

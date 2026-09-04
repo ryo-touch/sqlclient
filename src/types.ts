@@ -60,6 +60,8 @@ export interface QueryError {
 
 export type Mode = "connections" | "catalog" | "result" | "query" | "help";
 
+export type QueryFocus = "editor" | "result" | "history";
+
 export interface HistoryEntry {
   sql: string;
   connection: string;

@@ -19,7 +19,7 @@ function keys(mode: Mode): string {
     case "result":
       return "j/k rows · h/l columns · n/p page · y copy · e edit · r rerun · Tab query · ? help · q catalog";
     case "query":
-      return "j/k history · Enter/r run · e edit · Tab catalog · ? help · q result";
+      return "type SQL · Cmd+Enter run · Tab editor/result/history · Esc back";
     case "help":
       return "q/Esc close help";
   }
@@ -34,7 +34,7 @@ function compactKeys(mode: Mode): string {
     case "result":
       return "j/k rows h/l cols n/p page y copy e SQL r rerun Tab query q back";
     case "query":
-      return "j/k history Enter run e SQL Tab catalog q back";
+      return "type SQL Cmd+Enter run Tab panes Esc back";
     case "help":
       return "q/Esc close help";
   }

@@ -8,6 +8,7 @@ interface ResultGridProps {
   selectedRow: number;
   selectedColumn: number;
   columnOffset: number;
+  availableWidth?: number;
 }
 
 interface VisibleColumn {
@@ -59,6 +60,7 @@ export function ResultGrid({
   selectedRow,
   selectedColumn,
   columnOffset,
+  availableWidth,
 }: ResultGridProps) {
   const { stdout } = useStdout();
   const terminalWidth = stdout.columns ?? 80;
@@ -67,7 +69,7 @@ export function ResultGrid({
   const columns = visibleColumns(
     columnWidths,
     columnOffset,
-    Math.max(20, terminalWidth - 4),
+    availableWidth ?? Math.max(20, terminalWidth - 4),
   );
   const range = rowRange(result.rows.length, selectedRow, terminalHeight - 8);
 

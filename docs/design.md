@@ -32,9 +32,9 @@ Bun.SQL 1.4には行streamingやmaxRows APIがないため、「SQLを変えな�
 
 login-pathはdatabaseを保持できないため、MySQL接続直後の既定databaseは利用者がcatalogで見ているschemaと一致しない。schemaを開く操作でMySQLは `USE`、PostgreSQLは `search_path` を同じreserved sessionへ設定し、手書きSQLの非修飾table名が画面上の文脈と一致するようにした。
 
-## cmuxではeditorとresultを別paneにする
+## editorとresultをInk内で並べる
 
-複数行編集をInkへ再実装せず、cmuxが提供するterminal paneへ既存の `$EDITOR` を開く。元paneのInkを動かしたまま一時SQLファイルを監視し、保存差分を順番に実行することで、SQLとresultを同時に見られる。editor終了検知はinteractive shellへ状態を残さないsubshellのEXIT trapで行い、次回は同じsurfaceを再利用する。cmux環境変数やCLIが無い場合は `suspendTerminal` に戻す。
+SQLを書きながら直前の結果を参照することを優先し、query modeを左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
 
 ## 表示量を端末サイズで制限する
 
