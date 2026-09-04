@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  buildConnectionUrl,
+  buildConnectionOptions,
   isLoopbackHost,
   sanitizeDatabaseError,
 } from "../src/core/connection.ts";
@@ -18,18 +18,44 @@ const connection: ResolvedConnection = {
   password: "p@ss:/word",
 };
 
-describe("database connection URLs", () => {
-  test("URL-encodes all credential components", () => {
-    expect(buildConnectionUrl(connection)).toBe(
-      "postgres://read%20only:p%40ss%3A%2Fword@db.example.test:5432/data%2Fname",
-    );
+describe("database connection options", () => {
+  test("passes connection fields without serializing credentials into a URL", () => {
+    expect(buildConnectionOptions(connection)).toMatchObject({
+      adapter: "postgres",
+      hostname: "db.example.test",
+      port: 5432,
+      username: "read only",
+      database: "data/name",
+      password: "p@ss:/word",
+    });
+  });
+
+  test("preserves IPv6 literals as hostnames", () => {
+    expect(
+      buildConnectionOptions({ ...connection, host: "2001:db8::1" }),
+    ).toMatchObject({ hostname: "2001:db8::1" });
+    expect(
+      buildConnectionOptions({ ...connection, host: "[::1]" }),
+    ).toMatchObject({ hostname: "::1" });
   });
 
   test("recognizes only loopback hosts for local MySQL authentication", () => {
     expect(isLoopbackHost("localhost")).toBeTrue();
     expect(isLoopbackHost("127.0.0.1")).toBeTrue();
     expect(isLoopbackHost("::1")).toBeTrue();
+    expect(isLoopbackHost("[::1]")).toBeTrue();
+    expect(isLoopbackHost("2001:db8::1")).toBeFalse();
     expect(isLoopbackHost("db.example.test")).toBeFalse();
+    expect(
+      buildConnectionOptions({ ...connection, engine: "mysql", host: "::1" }),
+    ).toMatchObject({ allowPublicKeyRetrieval: true });
+    expect(
+      buildConnectionOptions({
+        ...connection,
+        engine: "mysql",
+        host: "2001:db8::1",
+      }),
+    ).toMatchObject({ allowPublicKeyRetrieval: false });
   });
 });
 

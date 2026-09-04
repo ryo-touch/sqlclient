@@ -41,20 +41,12 @@ function summary(connection: ResolvedConnection): ConnectionSummary {
   };
 }
 
-export function buildConnectionUrl(connection: ResolvedConnection): string {
-  const url = new URL(`${connection.engine}://localhost`);
-  url.hostname = connection.host;
-  url.port = String(connection.port);
-  url.username = connection.user;
-  if (connection.password !== undefined) url.password = connection.password;
-  if (connection.database !== undefined) {
-    url.pathname = `/${encodeURIComponent(connection.database)}`;
-  }
-  return url.toString();
+function normalizedHost(host: string): string {
+  return host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
 }
 
 export function isLoopbackHost(host: string): boolean {
-  const normalized = host.toLowerCase();
+  const normalized = normalizedHost(host).toLowerCase();
   return (
     normalized === "localhost" ||
     normalized === "127.0.0.1" ||
@@ -100,19 +92,35 @@ function connectionId(rows: unknown): ConnectionId | undefined {
     : undefined;
 }
 
-export async function connectDatabase(
+export function buildConnectionOptions(
   connection: ResolvedConnection,
-): Promise<DatabaseSession> {
-  const options: Bun.SQL.Options = {
-    url: buildConnectionUrl(connection),
+): Bun.SQL.Options {
+  const hostname = normalizedHost(connection.host);
+  return {
+    adapter: connection.engine,
+    hostname,
+    port: connection.port,
+    username: connection.user,
+    ...(connection.password === undefined
+      ? {}
+      : { password: connection.password }),
+    ...(connection.database === undefined
+      ? {}
+      : { database: connection.database }),
     max: 1,
     idleTimeout: 0,
     maxLifetime: 0,
     connectionTimeout: 30,
     // Public-key retrieval without TLS is acceptable only for a local disposable server.
     allowPublicKeyRetrieval:
-      connection.engine === "mysql" && isLoopbackHost(connection.host),
+      connection.engine === "mysql" && isLoopbackHost(hostname),
   };
+}
+
+export async function connectDatabase(
+  connection: ResolvedConnection,
+): Promise<DatabaseSession> {
+  const options = buildConnectionOptions(connection);
   const pool = new SQL(options);
 
   let reserved: Bun.ReservedSQL | undefined;
