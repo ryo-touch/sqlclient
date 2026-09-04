@@ -6,6 +6,7 @@ const bindings = [
   ["g / G", "move to first or last item"],
   ["Enter", "open or execute selection"],
   ["Tab", "cycle catalog, result, and query"],
+  ["Shift+Tab", "cycle query panes in reverse"],
   ["e", "open the in-app SQL editor"],
   ["Cmd+Enter", "execute the SQL draft"],
   ["r", "rerun the most recent or selected query"],

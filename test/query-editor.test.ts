@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  cycleQueryFocus,
   cursorPresentation,
   deleteQueryBackward,
   deleteQueryForward,
@@ -9,6 +10,19 @@ import {
 } from "../src/core/query-editor.ts";
 
 describe("in-app query editor", () => {
+  test("cycles available panes forward and backward", () => {
+    expect(cycleQueryFocus("editor", "forward", true, true)).toBe("result");
+    expect(cycleQueryFocus("editor", "backward", true, true)).toBe("history");
+    expect(cycleQueryFocus("result", "backward", true, true)).toBe("editor");
+    expect(cycleQueryFocus("history", "forward", true, true)).toBe("editor");
+  });
+
+  test("skips panes that have no content", () => {
+    expect(cycleQueryFocus("editor", "forward", false, true)).toBe("history");
+    expect(cycleQueryFocus("editor", "backward", true, false)).toBe("result");
+    expect(cycleQueryFocus("editor", "forward", false, false)).toBe("editor");
+  });
+
   test("renders a visible block before a newline cursor position", () => {
     expect(cursorPresentation("\n")).toEqual({
       glyph: " ",

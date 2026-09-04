@@ -45,16 +45,16 @@ function queryPaneKeys(focus: QueryFocus, compact: boolean): string {
   switch (focus) {
     case "editor":
       return compact
-        ? "type SQL Cmd+Enter run Tab result Esc back"
-        : "type SQL · Cmd+Enter run · Tab result · Esc back";
+        ? "type SQL Cmd+Enter run Tab/Shift+Tab panes Esc back"
+        : "type SQL · Cmd+Enter run · Tab/Shift+Tab panes · Esc back";
     case "result":
       return compact
-        ? "j/k rows h/l cols y copy Tab history e editor Esc back"
-        : "j/k rows · h/l columns · y copy · Tab history · e editor · Esc back";
+        ? "j/k rows h/l cols y copy Tab/Shift+Tab panes e editor Esc back"
+        : "j/k rows · h/l columns · y copy · Tab/Shift+Tab panes · e editor · Esc back";
     case "history":
       return compact
-        ? "j/k move Enter load r run Tab editor Esc back"
-        : "j/k move · Enter load · r run · Tab editor · Esc back";
+        ? "j/k move Enter load r run Tab/Shift+Tab panes Esc back"
+        : "j/k move · Enter load · r run · Tab/Shift+Tab panes · Esc back";
   }
 }
 

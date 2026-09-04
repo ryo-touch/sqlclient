@@ -338,6 +338,7 @@ export interface Dialect {
 - `g` / `G`: 先頭 / 末尾
 - `Enter`: 選択して次の階層へ
 - `Tab`: catalog ⇄ result ⇄ query を巡回
+- `Shift+Tab`: query mode の editor / result / history を逆順に巡回
 - `e`: query mode の SQL editor に移動する
 - `Cmd+Enter`: editor の SQL を実行する
 - `r`: 直近のクエリを再実行

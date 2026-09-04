@@ -24,6 +24,7 @@ import {
 } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
+import { cycleQueryFocus } from "./core/query-editor.ts";
 import { loadHistory, recordHistory } from "./core/history.ts";
 import { copyValue } from "./core/clipboard.ts";
 import type { HistoryEntry } from "./types.ts";
@@ -374,7 +375,12 @@ export function App() {
       } else if (key.tab) {
         dispatch({
           type: "setQueryFocus",
-          focus: state.result ? "result" : "history",
+          focus: cycleQueryFocus(
+            state.queryFocus,
+            key.shift ? "backward" : "forward",
+            state.result !== undefined,
+            state.history.length > 0,
+          ),
         });
       } else if (key.escape) {
         dispatch({
@@ -580,7 +586,17 @@ export function App() {
         } else if (input === "r") {
           const selected = state.history[state.selectedIndex];
           if (selected) void runUserSql(selected.sql);
-        } else if (key.tab || input === "e")
+        } else if (key.tab)
+          dispatch({
+            type: "setQueryFocus",
+            focus: cycleQueryFocus(
+              state.queryFocus,
+              key.shift ? "backward" : "forward",
+              state.result !== undefined,
+              state.history.length > 0,
+            ),
+          });
+        else if (input === "e")
           dispatch({ type: "setQueryFocus", focus: "editor" });
         else if (input === "q" || key.escape)
           dispatch({ type: "setMode", mode: "catalog" });
@@ -610,7 +626,12 @@ export function App() {
         else if (key.tab)
           dispatch({
             type: "setQueryFocus",
-            focus: state.history.length > 0 ? "history" : "editor",
+            focus: cycleQueryFocus(
+              state.queryFocus,
+              key.shift ? "backward" : "forward",
+              state.result !== undefined,
+              state.history.length > 0,
+            ),
           });
         else if (input === "e")
           dispatch({ type: "setQueryFocus", focus: "editor" });

@@ -1,4 +1,25 @@
+import type { QueryFocus } from "../types.ts";
+
 export type CursorDirection = "left" | "right" | "up" | "down" | "home" | "end";
+
+export function cycleQueryFocus(
+  current: QueryFocus,
+  direction: "forward" | "backward",
+  hasResult: boolean,
+  hasHistory: boolean,
+): QueryFocus {
+  const available: QueryFocus[] = [
+    "editor",
+    ...(hasResult ? (["result"] as const) : []),
+    ...(hasHistory ? (["history"] as const) : []),
+  ];
+  const currentIndex = Math.max(0, available.indexOf(current));
+  const delta = direction === "forward" ? 1 : -1;
+  return (
+    available[(currentIndex + delta + available.length) % available.length] ??
+    "editor"
+  );
+}
 
 export function cursorPresentation(character: string | undefined) {
   return character === "\n"

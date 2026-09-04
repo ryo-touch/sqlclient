@@ -84,6 +84,7 @@ schemaが `▾` で展開され、Headerにschema名が表示されていれば�
 | `g` / `G`       | 先頭 / 末尾                               |
 | `Enter`         | 接続・schema展開・table表示・履歴再実行   |
 | `Tab`           | catalog → result → queryを巡回            |
+| `Shift+Tab`     | query内のfocusを逆順に切り替える          |
 | `e`             | 左側のSQL editorを開く                    |
 | `Cmd+Enter`     | editorのSQLを実行                         |
 | `r`             | 直近または選択中のクエリを再実行          |
@@ -98,7 +99,7 @@ schemaが `▾` で展開され、Headerにschema名が表示されていれば�
 
 ### SQL editorとresult
 
-`e` を押すとInk内の分割画面へ移り、左側で複数行SQLを編集できます。右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor、result、historyのfocusを切り替えます。
+`e` を押すとInk内の分割画面へ移り、左側で複数行SQLを編集できます。右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → history、`Shift+Tab` で逆順にfocusを切り替えます。
 
 ## 既知の制約
 
