@@ -40,6 +40,8 @@ SQLを直接書く利用を主導線として、catalogでschemaを選択した�
 
 query modeはSQLを書きながら直前の結果を参照できるよう、左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
 
+縦幅が限られる場合はSQL入力を優先する。端末高が28行未満、または履歴が空ならHistory pane自体を隠し、focus巡回からも除外する。表示できる場合も履歴は最大5件に抑え、増えた高さはSQL editorへ割り当てる。
+
 ## 表示量を端末サイズで制限する
 
 Inkの `Static` は追記専用で選択行の更新に向かない。catalog、history、resultはいずれも選択位置の周辺だけをrenderし、resultのcolumnも端末幅へ収まる分だけ作る。DB取得上限だけではReact要素数を抑えられないため、取得・保持・描画を別々に制限している。

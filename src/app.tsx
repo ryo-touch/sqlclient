@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp, useInput, useStdout } from "ink";
 
 import { discoverConnections } from "./core/credentials.ts";
 import { resolveConnection } from "./core/credentials.ts";
@@ -19,7 +19,7 @@ import {
 import { listSchemas, listTables, selectSchema } from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
-import { cycleQueryFocus } from "./core/query-editor.ts";
+import { cycleQueryFocus, queryWorkbenchLayout } from "./core/query-editor.ts";
 import { loadHistory, recordHistory } from "./core/history.ts";
 import { copyValue } from "./core/clipboard.ts";
 import type { HistoryEntry } from "./types.ts";
@@ -36,9 +36,14 @@ import { StatusBar } from "./ui/StatusBar.tsx";
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { exit } = useApp();
+  const { stdout } = useStdout();
   const session = useRef<DatabaseSession | undefined>(undefined);
   const historyWrite = useRef<Promise<void>>(Promise.resolve());
   const [runningSeconds, setRunningSeconds] = useState(0);
+  const showQueryHistory = queryWorkbenchLayout(
+    stdout.rows ?? 24,
+    state.history.length > 0,
+  ).showHistory;
 
   useEffect(() => {
     void discoverConnections()
@@ -94,6 +99,16 @@ export function App() {
     },
     [],
   );
+
+  useEffect(() => {
+    if (
+      state.mode === "query" &&
+      state.queryFocus === "history" &&
+      !showQueryHistory
+    ) {
+      dispatch({ type: "setQueryFocus", focus: "editor" });
+    }
+  }, [showQueryHistory, state.mode, state.queryFocus]);
 
   const visibleConnections = useMemo(() => {
     const filter = state.filter.toLocaleLowerCase();
@@ -373,7 +388,7 @@ export function App() {
             state.queryFocus,
             key.shift ? "backward" : "forward",
             state.result !== undefined,
-            state.history.length > 0,
+            showQueryHistory,
           ),
         });
       } else if (key.escape) {
@@ -585,7 +600,7 @@ export function App() {
               state.queryFocus,
               key.shift ? "backward" : "forward",
               state.result !== undefined,
-              state.history.length > 0,
+              showQueryHistory,
             ),
           });
         else if (input === "e")
@@ -622,7 +637,7 @@ export function App() {
               state.queryFocus,
               key.shift ? "backward" : "forward",
               state.result !== undefined,
-              state.history.length > 0,
+              showQueryHistory,
             ),
           });
         else if (input === "e")

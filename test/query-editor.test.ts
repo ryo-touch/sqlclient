@@ -7,10 +7,29 @@ import {
   deleteQueryForward,
   insertQueryText,
   moveQueryCursor,
+  queryWorkbenchLayout,
   selectionWindow,
 } from "../src/core/query-editor.ts";
 
 describe("in-app query editor", () => {
+  test("gives constrained height to the editor before history", () => {
+    expect(queryWorkbenchLayout(24, true)).toEqual({
+      editorLines: 18,
+      historyLimit: 0,
+      showHistory: false,
+    });
+    expect(queryWorkbenchLayout(40, true)).toEqual({
+      editorLines: 25,
+      historyLimit: 5,
+      showHistory: true,
+    });
+    expect(queryWorkbenchLayout(40, false)).toEqual({
+      editorLines: 34,
+      historyLimit: 0,
+      showHistory: false,
+    });
+  });
+
   test("keeps a selected history entry inside the visible window", () => {
     expect(selectionWindow(20, 12, 5)).toEqual({ start: 10, end: 15 });
     expect(selectionWindow(20, 0, 5)).toEqual({ start: 0, end: 5 });

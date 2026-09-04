@@ -105,6 +105,8 @@ connectionsで接続先を選んで `Enter` を押すとcatalogへ移動しま�
 
 query画面の左側で複数行SQLを編集でき、右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → history、`Shift+Tab` で逆順にfocusを切り替えます。
 
+端末の高さが28行未満、または履歴が空の場合はHistory paneを隠し、その高さをSQL editorへ割り当てます。Historyが非表示のときは `Tab` / `Shift+Tab` の移動対象からも除外します。
+
 ## 既知の制約
 
 - table閲覧は1ページ200行です。次ページ判定用に201行を取得し、余剰1行は保持しません。

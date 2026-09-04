@@ -315,6 +315,8 @@ export interface Dialect {
 - 左ペインにハイライト付きの複数行 SQL editor とクエリ履歴、右ペインに直近の result を表示する
 - `Cmd+Enter` で実行した後も query mode に留まり、SQL と結果を同時に確認できる
 - catalogでschemaを選択した後の主画面とし、`Esc` でcatalogへ戻れる
+- 端末高が28行未満、または履歴が空ならHistory paneを非表示にし、SQL editorへ高さを割り当てる
+- History非表示時はfocus巡回からhistoryを除外する。表示時も履歴は最大5件とし、残りの高さをSQL editorへ割り当てる
 
 **help**
 

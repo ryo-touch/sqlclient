@@ -2,6 +2,35 @@ import type { QueryFocus } from "../types.ts";
 
 export type CursorDirection = "left" | "right" | "up" | "down" | "home" | "end";
 
+export interface QueryWorkbenchLayout {
+  editorLines: number;
+  historyLimit: number;
+  showHistory: boolean;
+}
+
+export function queryWorkbenchLayout(
+  terminalRows: number,
+  hasHistory: boolean,
+): QueryWorkbenchLayout {
+  if (!hasHistory || terminalRows < 28) {
+    return {
+      editorLines: Math.max(5, terminalRows - 6),
+      historyLimit: 0,
+      showHistory: false,
+    };
+  }
+
+  const historyLimit = Math.min(
+    5,
+    Math.max(1, Math.floor((terminalRows - 25) / 3)),
+  );
+  return {
+    editorLines: Math.max(5, terminalRows - historyLimit - 10),
+    historyLimit,
+    showHistory: true,
+  };
+}
+
 export function cycleQueryFocus(
   current: QueryFocus,
   direction: "forward" | "backward",
