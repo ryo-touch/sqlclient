@@ -1,5 +1,11 @@
 export type CursorDirection = "left" | "right" | "up" | "down" | "home" | "end";
 
+export function cursorPresentation(character: string | undefined) {
+  return character === "\n"
+    ? { glyph: " ", trailingNewline: "\n" }
+    : { glyph: character ?? " ", trailingNewline: "" };
+}
+
 function clampCursor(sql: string, cursor: number): number {
   return Math.max(0, Math.min(cursor, sql.length));
 }

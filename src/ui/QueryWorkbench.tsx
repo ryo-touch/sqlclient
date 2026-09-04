@@ -2,6 +2,7 @@ import type { ComponentProps, ReactNode } from "react";
 import { Box, Text, useStdout } from "ink";
 
 import { highlightSql, type SqlSegmentName } from "../core/highlight.ts";
+import { cursorPresentation } from "../core/query-editor.ts";
 import type { Engine, HistoryEntry, QueryFocus, ResultSet } from "../types.ts";
 import { formatDateTime } from "../util/format.ts";
 import { ResultGrid } from "./ResultGrid.tsx";
@@ -55,14 +56,17 @@ function highlightedEditor(
       relativeCursor >= 0 &&
       relativeCursor < segment.content.length
     ) {
+      const cursorCharacter = segment.content[relativeCursor];
+      const cursor = cursorPresentation(cursorCharacter);
       nodes.push(
         <Text color={color} key={`${index}:before`}>
           {segment.content.slice(0, relativeCursor)}
         </Text>,
         <Text color="black" backgroundColor="cyan" key={`${index}:cursor`}>
-          {segment.content[relativeCursor]}
+          {cursor.glyph}
         </Text>,
         <Text color={color} key={`${index}:after`}>
+          {cursor.trailingNewline}
           {segment.content.slice(relativeCursor + 1)}
         </Text>,
       );

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  cursorPresentation,
   deleteQueryBackward,
   deleteQueryForward,
   insertQueryText,
@@ -8,6 +9,13 @@ import {
 } from "../src/core/query-editor.ts";
 
 describe("in-app query editor", () => {
+  test("renders a visible block before a newline cursor position", () => {
+    expect(cursorPresentation("\n")).toEqual({
+      glyph: " ",
+      trailingNewline: "\n",
+    });
+  });
+
   test("inserts pasted multiline text at the cursor", () => {
     expect(insertQueryText("SELECT ", 7, "1\nFROM dual")).toEqual({
       sql: "SELECT 1\nFROM dual",
