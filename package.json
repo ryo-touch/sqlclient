@@ -1,8 +1,13 @@
 {
   "name": "sqlclient",
+  "version": "0.1.0",
+  "description": "A read-only terminal SQL client for MySQL and PostgreSQL",
   "module": "src/index.tsx",
   "type": "module",
   "private": true,
+  "engines": {
+    "bun": ">=1.4.0"
+  },
   "bin": {
     "sqlclient": "src/index.tsx"
   },
@@ -23,6 +28,7 @@
   "dependencies": {
     "ink": "^7",
     "react": "^19",
+    "react-devtools-core": "^7.0.1",
     "sql-highlight": "^6.1.0"
   }
 }

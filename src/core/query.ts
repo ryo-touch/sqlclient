@@ -68,14 +68,24 @@ async function executeTimed(
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
-    session.cancelActive();
+    void session.cancelActive();
   }, timeoutMs);
   try {
     const value = await start();
+    if (session.takeCancellation()) {
+      return {
+        error: { message: timedOut ? "Query timed out" : "Query cancelled" },
+        elapsedMs: performance.now() - startedAt,
+        timedOut,
+      };
+    }
     return { value, elapsedMs: performance.now() - startedAt, timedOut };
   } catch (error) {
+    const cancelled = session.takeCancellation();
     return {
-      error: session.toQueryError(error),
+      error: cancelled
+        ? { message: timedOut ? "Query timed out" : "Query cancelled" }
+        : session.toQueryError(error),
       elapsedMs: performance.now() - startedAt,
       timedOut,
     };

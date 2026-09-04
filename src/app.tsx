@@ -356,10 +356,15 @@ export function App() {
   useInput((input, key) => {
     if (key.ctrl && input === "c") {
       if (state.running) {
-        const cancelled = session.current?.cancelActive() ?? false;
-        dispatch({
-          type: "showMessage",
-          message: cancelled ? "Cancelling query…" : "Nothing to cancel",
+        const connected = session.current;
+        dispatch({ type: "showMessage", message: "Cancelling query…" });
+        void connected?.cancelActive().then((cancelled) => {
+          if (!cancelled) {
+            dispatch({
+              type: "addWarnings",
+              warnings: ["The server did not accept the cancellation request"],
+            });
+          }
         });
       } else {
         exit();

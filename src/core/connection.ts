@@ -7,6 +7,7 @@ import type {
 } from "../types.ts";
 
 type Query<T> = SQL.Query<T>;
+type ConnectionId = number;
 
 export interface DatabaseSession {
   readonly info: ConnectionSummary;
@@ -14,7 +15,8 @@ export interface DatabaseSession {
   executeCatalog<T>(statement: string, values?: readonly unknown[]): Query<T>;
   executeUser<T>(statement: string): Query<T>;
   toQueryError(error: unknown): QueryError;
-  cancelActive(): boolean;
+  cancelActive(): Promise<boolean>;
+  takeCancellation(): boolean;
   close(): Promise<void>;
 }
 
@@ -97,10 +99,23 @@ export function readOnlyValueIsVerified(
   return engine === "mysql" ? value === 1 || value === 1n : value === "on";
 }
 
+function connectionId(rows: unknown): ConnectionId | undefined {
+  if (!Array.isArray(rows) || rows.length === 0) return undefined;
+  const row = rows[0];
+  if (typeof row !== "object" || row === null) return undefined;
+  const value = Object.values(row)[0];
+  const numeric = typeof value === "bigint" ? Number(value) : value;
+  return typeof numeric === "number" &&
+    Number.isSafeInteger(numeric) &&
+    numeric > 0
+    ? numeric
+    : undefined;
+}
+
 export async function connectDatabase(
   connection: ResolvedConnection,
 ): Promise<DatabaseSession> {
-  const pool = new SQL({
+  const options: Bun.SQL.Options = {
     url: buildConnectionUrl(connection),
     max: 1,
     idleTimeout: 0,
@@ -109,15 +124,19 @@ export async function connectDatabase(
     // Public-key retrieval without TLS is acceptable only for a local disposable server.
     allowPublicKeyRetrieval:
       connection.engine === "mysql" && isLoopbackHost(connection.host),
-  });
+  };
+  const pool = new SQL(options);
 
   let reserved: Bun.ReservedSQL | undefined;
+  let backendId: ConnectionId | undefined;
   try {
     reserved = await pool.reserve({ signal: AbortSignal.timeout(30_000) });
     if (connection.engine === "mysql") {
       await reserved`SET SESSION TRANSACTION READ ONLY`;
+      await reserved`SET SESSION max_execution_time = 30000`;
     } else {
       await reserved`SET default_transaction_read_only = on`;
+      await reserved`SET statement_timeout = '30s'`;
     }
     const verification =
       connection.engine === "mysql"
@@ -125,6 +144,14 @@ export async function connectDatabase(
         : await reserved`SHOW default_transaction_read_only`;
     if (!readOnlyValueIsVerified(connection.engine, verification)) {
       throw new Error("The server did not confirm read-only mode");
+    }
+    const identifier =
+      connection.engine === "mysql"
+        ? await reserved`SELECT CONNECTION_ID() AS connection_id`
+        : await reserved`SELECT pg_backend_pid() AS connection_id`;
+    backendId = connectionId(identifier);
+    if (backendId === undefined) {
+      throw new Error("The server did not provide a cancellable connection ID");
     }
   } catch (error) {
     reserved?.release();
@@ -135,18 +162,38 @@ export async function connectDatabase(
   const client = reserved;
   let active: Query<unknown> | undefined;
   let closed = false;
+  let cancellationRequested = false;
+
+  const cancelBackend = async (): Promise<boolean> => {
+    if (backendId === undefined || !active) return false;
+    const control = new SQL(options);
+    try {
+      if (connection.engine === "mysql") {
+        // backendId is a server-provided, validated positive integer.
+        await control.unsafe(`KILL QUERY ${backendId}`);
+      } else {
+        await control`SELECT pg_cancel_backend(${backendId})`;
+      }
+      return true;
+    } catch {
+      return false;
+    } finally {
+      await control.close({ timeout: 0 }).catch(() => undefined);
+    }
+  };
 
   const track = <T>(query: Query<T>): Query<T> => {
-    active = query as Query<unknown>;
-    void query.then(
+    const executing = query.execute();
+    active = executing as Query<unknown>;
+    void executing.then(
       () => {
-        if (active === query) active = undefined;
+        if (active === executing) active = undefined;
       },
       () => {
-        if (active === query) active = undefined;
+        if (active === executing) active = undefined;
       },
     );
-    return query;
+    return executing;
   };
 
   return {
@@ -158,10 +205,17 @@ export async function connectDatabase(
     // User-authored SQL cannot be parameterized or safely rewritten.
     executeUser: <T>(statement: string) => track(client.unsafe<T>(statement)),
     toQueryError: (error: unknown) => sanitizeDatabaseError(error, connection),
-    cancelActive: () => {
-      if (!active?.active) return false;
+    cancelActive: async () => {
+      // Bun 1.4.0 may leave Query.active false while the server is executing it.
+      if (!active) return false;
+      cancellationRequested = true;
       active.cancel();
-      return true;
+      return cancelBackend();
+    },
+    takeCancellation: () => {
+      const requested = cancellationRequested;
+      cancellationRequested = false;
+      return requested;
     },
     close: async () => {
       if (closed) return;

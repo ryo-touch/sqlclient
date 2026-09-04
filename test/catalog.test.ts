@@ -18,7 +18,8 @@ function sessionReturning(rows: unknown): DatabaseSession {
     executeCatalog: () => Promise.resolve(rows) as never,
     executeUser: () => Promise.resolve([]) as never,
     toQueryError: () => ({ message: "failed" }),
-    cancelActive: () => false,
+    cancelActive: async () => false,
+    takeCancellation: () => false,
     close: async () => undefined,
   };
 }

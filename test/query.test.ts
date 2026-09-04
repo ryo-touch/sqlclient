@@ -12,6 +12,7 @@ import { postgresDialect } from "../src/core/dialect/postgres.ts";
 
 function fakeSession(result: unknown, delayMs = 0): DatabaseSession {
   let cancelled = false;
+  let cancellationRequested = false;
   const query = async () => {
     if (delayMs > 0) await Bun.sleep(delayMs);
     if (cancelled) throw new Error("cancelled");
@@ -32,9 +33,15 @@ function fakeSession(result: unknown, delayMs = 0): DatabaseSession {
     toQueryError: (error) => ({
       message: error instanceof Error ? error.message : "failed",
     }),
-    cancelActive: () => {
+    cancelActive: async () => {
       cancelled = true;
+      cancellationRequested = true;
       return true;
+    },
+    takeCancellation: () => {
+      const requested = cancellationRequested;
+      cancellationRequested = false;
+      return requested;
     },
     close: async () => undefined,
   };
