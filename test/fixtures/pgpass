@@ -1,0 +1,5 @@
+# specific entries must win over wildcards
+db.example.test:5433:warehouse:analyst:specific\:password
+*:5433:*:analyst:wildcard
+localhost:5432:developer:developer:back\\slash
+malformed:line
