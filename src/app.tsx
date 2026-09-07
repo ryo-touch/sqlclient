@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Box, Text, useApp, useInput, useStdout } from "ink";
+import { Box, Text, useApp, useInput, useStdin, useStdout } from "ink";
 
 import { discoverConnections } from "./core/credentials.ts";
 import { resolveConnection } from "./core/credentials.ts";
@@ -22,6 +22,10 @@ import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
 import { cycleQueryFocus, queryWorkbenchLayout } from "./core/query-editor.ts";
 import { loadHistory, recordHistory } from "./core/history.ts";
 import { copyValue } from "./core/clipboard.ts";
+import {
+  editSqlExternally,
+  resolveEditorCommand,
+} from "./core/external-editor.ts";
 import type { HistoryEntry } from "./types.ts";
 import { initialState, reducer } from "./state.ts";
 import { ConnectionList } from "./ui/ConnectionList.tsx";
@@ -36,10 +40,12 @@ import { StatusBar } from "./ui/StatusBar.tsx";
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { exit } = useApp();
-  const { stdout } = useStdout();
+  const { stdout, write } = useStdout();
+  const { stdin, setRawMode } = useStdin();
   const session = useRef<DatabaseSession | undefined>(undefined);
   const historyWrite = useRef<Promise<void>>(Promise.resolve());
   const [runningSeconds, setRunningSeconds] = useState(0);
+  const externalEditorActive = useRef(false);
   const showQueryHistory = queryWorkbenchLayout(
     stdout.rows ?? 24,
     state.history.length > 0,
@@ -299,6 +305,40 @@ export function App() {
     }
   }, [catalogNodes, state]);
 
+  const openExternalEditor = useCallback(async () => {
+    if (externalEditorActive.current) return;
+    externalEditorActive.current = true;
+    try {
+      setRawMode(false);
+      stdin.pause();
+      write("\u001B[?25h");
+      const edited = await editSqlExternally(
+        state.queryDraft,
+        resolveEditorCommand(),
+      );
+      dispatch({ type: "replaceQueryDraft", sql: edited.trimEnd() });
+      dispatch({
+        type: "showMessage",
+        message: "Updated SQL from external editor",
+      });
+    } catch (error) {
+      dispatch({
+        type: "showError",
+        error: {
+          message:
+            error instanceof Error
+              ? error.message
+              : "External editor could not be opened",
+        },
+      });
+    } finally {
+      write("\u001B[2J\u001B[H\u001B[?25l");
+      stdin.resume();
+      setRawMode(true);
+      externalEditorActive.current = false;
+    }
+  }, [setRawMode, state.queryDraft, stdin, write]);
+
   const openCatalogNode = useCallback(
     async (node: CatalogNode) => {
       const connected = session.current;
@@ -377,7 +417,9 @@ export function App() {
 
     if (state.mode === "query" && state.queryFocus === "editor") {
       if (key.eventType === "release") return;
-      if (key.return && (key.super || key.meta)) {
+      if (key.ctrl && input === "g") {
+        if (!state.running) void openExternalEditor();
+      } else if (key.return && (key.super || key.meta)) {
         if (!state.running && state.queryDraft.trim() !== "") {
           void runUserSql(state.queryDraft);
         }
@@ -659,7 +701,10 @@ export function App() {
           dispatch({ type: "appendFilter", text: input });
       } else if (input === "/") dispatch({ type: "beginFilter" });
       else if (key.tab)
-        dispatch({ type: "setMode", mode: state.result ? "result" : "query" });
+        dispatch({
+          type: "setMode",
+          mode: state.result ? "result" : "query",
+        });
       else if (input === "j" || key.downArrow)
         dispatch({ type: "moveSelection", delta: 1, itemCount });
       else if (input === "k" || key.upArrow)

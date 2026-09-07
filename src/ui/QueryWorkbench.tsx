@@ -158,7 +158,8 @@ export function QueryWorkbench({
           minHeight={layout.editorLines + 2}
         >
           <Text bold color={focus === "editor" ? "cyan" : undefined}>
-            {focus === "editor" ? "▶ " : "  "}SQL · Cmd+Enter run
+            {focus === "editor" ? "▶ " : "  "}SQL · Cmd+Enter run · Ctrl-G
+            external
           </Text>
           {editor.above > 0 ? (
             <Text dimColor>… {editor.above} lines above</Text>

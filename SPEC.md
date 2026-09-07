@@ -271,11 +271,13 @@ export interface Dialect {
 
 - query mode は左に複数行 SQL editor、右に直近の result を同時表示する
 - 通常の `Enter` は改行、macOS の `Cmd+Enter` は現在の SQL を実行する
+- editorにfocus中の `Ctrl-G` は現在のSQLを一時 `.sql` ファイルへ書き出し、外部editorで編集する
+- 外部editorは `VISUAL`、次に `EDITOR` を参照し、引用符を含む引数付きcommandを保持する
+- 外部editorの実行中はInkの入力を停止して端末を渡し、終了後に編集結果をdraftへ反映して一時ファイルを削除する
 - 文字入力、複数行 paste、backspace / delete、上下左右・行頭・行末の cursor 移動を扱う
 - editor / result / history は `Tab` で focus を切り替える
 - editor の操作は reducer action として適用し、複数文字が 1 チャンクで届いても入力を失わない
 - SQL は `sql-highlight` の segment を Ink の `<Text>` として描画し、cursor 位置だけ inverse にする
-- 外部 editor、一時 SQL ファイル、cmux pane は作らない
 
 ## ハイライト仕様
 
@@ -332,6 +334,7 @@ export interface Dialect {
 - `Shift+Tab`: query mode の editor / result / history を逆順に巡回
 - `e`: query mode の SQL editor に移動する
 - `Cmd+Enter`: editor の SQL を実行する
+- `Ctrl-G`: query editor の SQL を外部editorで編集する
 - `r`: 直近のクエリを再実行
 - `n` / `p`: 次ページ / 前ページ
 - `y`: 選択中のセル値（catalog ではテーブル名）を pbcopy でコピー
