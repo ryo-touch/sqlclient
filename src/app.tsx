@@ -16,12 +16,18 @@ import {
   sanitizeDatabaseError,
   type DatabaseSession,
 } from "./core/connection.ts";
-import { listSchemas, listTables, selectSchema } from "./core/catalog.ts";
+import {
+  listColumns,
+  listSchemas,
+  listTables,
+  selectSchema,
+} from "./core/catalog.ts";
 import { dialectFor } from "./core/dialect/index.ts";
 import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
 import { cycleQueryFocus, queryWorkbenchLayout } from "./core/query-editor.ts";
 import { loadHistory, recordHistory } from "./core/history.ts";
 import { copyValue } from "./core/clipboard.ts";
+import { exportResultTsv } from "./core/export.ts";
 import {
   editSqlExternally,
   resolveEditorCommand,
@@ -46,6 +52,7 @@ export function App() {
   const historyWrite = useRef<Promise<void>>(Promise.resolve());
   const [runningSeconds, setRunningSeconds] = useState(0);
   const externalEditorActive = useRef(false);
+  const completionCache = useRef(new Map<string, string[]>());
   const showQueryHistory = queryWorkbenchLayout(
     stdout.rows ?? 24,
     state.history.length > 0,
@@ -314,6 +321,22 @@ export function App() {
     }
   }, [catalogNodes, state]);
 
+  const exportResult = useCallback(async () => {
+    if (!state.result) {
+      dispatch({ type: "showMessage", message: "No result to export" });
+      return;
+    }
+    try {
+      const path = await exportResultTsv(state.result);
+      dispatch({ type: "showMessage", message: `Exported TSV to ${path}` });
+    } catch {
+      dispatch({
+        type: "showError",
+        error: { message: "TSV export failed" },
+      });
+    }
+  }, [state.result]);
+
   const openExternalEditor = useCallback(async () => {
     if (externalEditorActive.current) return;
     externalEditorActive.current = true;
@@ -347,6 +370,34 @@ export function App() {
       externalEditorActive.current = false;
     }
   }, [setRawMode, state.queryDraft, stdin, write]);
+
+  const completeIdentifier = useCallback(async () => {
+    const connected = session.current;
+    const schema = state.selectedSchema;
+    if (!connected || !schema) return;
+    const cacheKey = `${connected.info.engine}:${connected.info.name}:${schema}`;
+    let candidates = completionCache.current.get(cacheKey);
+    if (!candidates) {
+      dispatch({ type: "showMessage", message: "Loading completions…" });
+      try {
+        const columns = await listColumns(
+          connected,
+          dialectFor(connected.info.engine),
+          schema,
+        );
+        candidates = [
+          ...new Set(
+            columns.flatMap((column) => [column.table, column.column]),
+          ),
+        ];
+        completionCache.current.set(cacheKey, candidates);
+      } catch (error) {
+        dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
+        return;
+      }
+    }
+    dispatch({ type: "completeQueryIdentifier", candidates });
+  }, [state.selectedSchema]);
 
   const openCatalogNode = useCallback(
     async (node: CatalogNode) => {
@@ -458,7 +509,9 @@ export function App() {
 
     if (state.mode === "query" && state.queryFocus === "editor") {
       if (key.eventType === "release") return;
-      if (key.ctrl && input === "g") {
+      if (key.ctrl && (input === " " || input === "`")) {
+        if (!state.running) void completeIdentifier();
+      } else if (key.ctrl && input === "g") {
         if (!state.running) void openExternalEditor();
       } else if (key.return && (key.super || key.meta)) {
         if (!state.running && state.queryDraft.trim() !== "") {
@@ -539,6 +592,16 @@ export function App() {
         (state.mode === "query" && state.queryFocus === "result"))
     ) {
       void copySelection();
+      return;
+    }
+
+    if (
+      !state.filterEditing &&
+      input === "w" &&
+      (state.mode === "result" ||
+        (state.mode === "query" && state.queryFocus === "result"))
+    ) {
+      void exportResult();
       return;
     }
 

@@ -34,6 +34,12 @@ export interface TableRef {
   approxRows?: number;
 }
 
+export interface ColumnRef {
+  schema: string;
+  table: string;
+  column: string;
+}
+
 export interface ResultSet {
   columns: string[];
   rows: unknown[][];

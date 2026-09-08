@@ -10,6 +10,7 @@ import type {
   TableRef,
 } from "./types.ts";
 import {
+  completeQueryIdentifier,
   deleteQueryBackward as deleteBackward,
   deleteQueryForward as deleteForward,
   insertQueryText as insertText,
@@ -117,6 +118,7 @@ export type Action =
   | { type: "moveQueryCursor"; direction: CursorDirection }
   | { type: "setQueryFocus"; focus: QueryFocus }
   | { type: "replaceQueryDraft"; sql: string }
+  | { type: "completeQueryIdentifier"; candidates: string[] }
   | { type: "loadHistoryQuery"; sql: string }
   | { type: "showError"; error: QueryError }
   | { type: "clearError" };
@@ -445,6 +447,25 @@ export function reducer(state: AppState, action: Action): AppState {
         queryDraft: action.sql,
         queryCursor: action.sql.length,
       };
+    case "completeQueryIdentifier": {
+      const completed = completeQueryIdentifier(
+        state.queryDraft,
+        state.queryCursor,
+        action.candidates,
+      );
+      const matchPreview = completed.matches.slice(0, 5).join(", ");
+      return {
+        ...state,
+        queryDraft: completed.sql,
+        queryCursor: completed.cursor,
+        message:
+          completed.matches.length > 1
+            ? `Matches: ${matchPreview}${completed.matches.length > 5 ? ", …" : ""}`
+            : completed.matches.length === 0
+              ? "No identifier completion"
+              : `Completed: ${completed.matches[0]}`,
+      };
+    }
     case "loadHistoryQuery":
       return {
         ...state,

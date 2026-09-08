@@ -26,8 +26,17 @@ SELECT
 FROM information_schema.tables
 WHERE table_schema = ?
 ORDER BY table_name`,
+  listColumns: () => `
+SELECT
+  table_schema AS schema_name,
+  table_name,
+  column_name
+FROM information_schema.columns
+WHERE table_schema = ?
+ORDER BY table_name, ordinal_position`,
   selectSchema: (schema) => `USE ${quoteMysqlIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quoteMysqlIdent(schema)}.${quoteMysqlIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
   tableParameters: (schema) => [schema],
+  columnParameters: (schema) => [schema],
 };

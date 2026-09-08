@@ -272,6 +272,7 @@ export interface Dialect {
 - query mode は左に複数行 SQL editor、右に直近の result を同時表示する
 - 通常の `Enter` は改行、macOS の `Cmd+Enter` は現在の SQL を実行する
 - editorにfocus中の `Ctrl-G` は現在のSQLを一時 `.sql` ファイルへ書き出し、外部editorで編集する
+- editorにfocus中の `Ctrl-Space` は選択schemaのtable名・column名からcursor直前の識別子を補完する
 - 外部editorは `VISUAL`、次に `EDITOR` を参照し、引用符を含む引数付きcommandを保持する
 - 外部editorの実行中はInkの入力を停止して端末を渡し、終了後に編集結果をdraftへ反映して一時ファイルを削除する
 - 文字入力、複数行 paste、backspace / delete、上下左右・行頭・行末の cursor 移動を扱う
@@ -335,11 +336,13 @@ export interface Dialect {
 - `e`: query mode の SQL editor に移動する
 - `Cmd+Enter`: editor の SQL を実行する
 - `Ctrl-G`: query editor の SQL を外部editorで編集する
+- `Ctrl-Space`: query editor のtable名・column名を補完する
 - `Ctrl-X`: 現在のsessionを維持したまま接続一覧を開く。新しい接続の成功後に旧sessionを閉じる
 - `Ctrl-R`: 現在の接続設定を再解決して再接続する
 - `r`: 直近のクエリを再実行
 - `n` / `p`: 次ページ / 前ページ
 - `y`: 選択中のセル値（catalog ではテーブル名）を pbcopy でコピー
+- `w`: resultの保持中データをカレントディレクトリへTSVで書き出す
 - `/`: フィルタ入力。`Esc` で解除
 - `?`: help
 - `q` / `Esc`: 一つ前のモードへ戻る。connections で押した場合は終了

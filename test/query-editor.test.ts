@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  completeQueryIdentifier,
   cycleQueryFocus,
   cursorPresentation,
   deleteQueryBackward,
@@ -60,6 +61,26 @@ describe("in-app query editor", () => {
     expect(insertQueryText("SELECT ", 7, "1\nFROM dual")).toEqual({
       sql: "SELECT 1\nFROM dual",
       cursor: 18,
+    });
+  });
+
+  test("completes the current identifier using case-insensitive metadata", () => {
+    expect(
+      completeQueryIdentifier("SELECT item_", 12, ["items", "item_id"]),
+    ).toEqual({
+      sql: "SELECT item_id",
+      cursor: 14,
+      matches: ["item_id"],
+    });
+  });
+
+  test("inserts only the common prefix for ambiguous identifiers", () => {
+    expect(
+      completeQueryIdentifier("SELECT cre", 10, ["created_by", "created_at"]),
+    ).toEqual({
+      sql: "SELECT created_",
+      cursor: 15,
+      matches: ["created_at", "created_by"],
     });
   });
 

@@ -18,9 +18,9 @@ function keys(mode: Mode): string {
     case "catalog":
       return "j/k move · Enter schema→query/open table · h/l tree · Ctrl-X switch · Ctrl-R reconnect · ? help · q back";
     case "result":
-      return "j/k rows · h/l columns · n/p page · y copy · Ctrl-X switch · Ctrl-R reconnect · q catalog";
+      return "j/k rows · h/l columns · n/p page · y copy · w TSV · Ctrl-X switch · Ctrl-R reconnect · q catalog";
     case "query":
-      return "type SQL · Cmd+Enter run · Ctrl-G external · Ctrl-X switch · Ctrl-R reconnect · Tab panes";
+      return "type SQL · Cmd+Enter run · Ctrl-Space complete · Ctrl-G external · Ctrl-X switch · Ctrl-R reconnect · Tab panes";
     case "help":
       return "q/Esc close help";
   }
@@ -33,9 +33,9 @@ function compactKeys(mode: Mode): string {
     case "catalog":
       return "j/k move Enter query/open h/l tree s sys y copy ? help q back";
     case "result":
-      return "j/k rows h/l cols n/p page y copy e SQL r rerun Tab query q back";
+      return "j/k rows h/l cols n/p page y copy w TSV e SQL r rerun Tab query q back";
     case "query":
-      return "type SQL Cmd+Enter run Ctrl-G editor Tab panes Esc back";
+      return "type SQL Cmd+Enter run Ctrl-Space complete Ctrl-G editor Tab panes Esc back";
     case "help":
       return "q/Esc close help";
   }
@@ -45,12 +45,12 @@ function queryPaneKeys(focus: QueryFocus, compact: boolean): string {
   switch (focus) {
     case "editor":
       return compact
-        ? "type SQL Cmd+Enter run Ctrl-G external Tab panes Esc back"
-        : "type SQL · Cmd+Enter run · Ctrl-G external editor · Tab/Shift+Tab panes · Esc back";
+        ? "type SQL Cmd+Enter run Ctrl-Space complete Ctrl-G external Tab panes"
+        : "type SQL · Cmd+Enter run · Ctrl-Space complete · Ctrl-G external editor · Tab panes · Esc back";
     case "result":
       return compact
-        ? "j/k rows h/l cols y copy Tab/Shift+Tab panes e editor Esc back"
-        : "j/k rows · h/l columns · y copy · Tab/Shift+Tab panes · e editor · Esc back";
+        ? "j/k rows h/l cols y copy w TSV Tab panes e editor Esc back"
+        : "j/k rows · h/l columns · y copy · w TSV · Tab/Shift+Tab panes · e editor · Esc back";
     case "history":
       return compact
         ? "j/k move Enter load r run Tab/Shift+Tab panes Esc back"

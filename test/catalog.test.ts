@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { listTables } from "../src/core/catalog.ts";
+import { listColumns, listTables } from "../src/core/catalog.ts";
 import type { DatabaseSession } from "../src/core/connection.ts";
 import { mysqlDialect } from "../src/core/dialect/mysql.ts";
 
@@ -44,6 +44,19 @@ describe("catalog normalization", () => {
         type: "table",
         approxRows: 12,
       },
+    ]);
+  });
+
+  test("normalizes column metadata", async () => {
+    const columns = await listColumns(
+      sessionReturning([
+        { SCHEMA_NAME: "app", table_name: "items", COLUMN_NAME: "item_id" },
+      ]),
+      mysqlDialect,
+      "app",
+    );
+    expect(columns).toEqual([
+      { schema: "app", table: "items", column: "item_id" },
     ]);
   });
 });

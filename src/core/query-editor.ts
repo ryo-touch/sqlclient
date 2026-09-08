@@ -81,6 +81,52 @@ export function insertQueryText(sql: string, cursor: number, text: string) {
   };
 }
 
+export interface IdentifierCompletion {
+  sql: string;
+  cursor: number;
+  matches: string[];
+}
+
+export function completeQueryIdentifier(
+  sql: string,
+  cursor: number,
+  candidates: readonly string[],
+): IdentifierCompletion {
+  const position = clampCursor(sql, cursor);
+  const prefix =
+    sql.slice(0, position).match(/[\p{L}_][\p{L}\p{N}_$]*$/u)?.[0] ?? "";
+  const unique = [...new Set(candidates)].sort((left, right) =>
+    left.localeCompare(right),
+  );
+  const matches = unique.filter((candidate) =>
+    candidate.toLocaleLowerCase().startsWith(prefix.toLocaleLowerCase()),
+  );
+  if (prefix === "" || matches.length === 0)
+    return { sql, cursor: position, matches };
+
+  let completion = matches[0]!;
+  for (const candidate of matches.slice(1)) {
+    let common = 0;
+    while (
+      common < completion.length &&
+      common < candidate.length &&
+      completion[common]!.toLocaleLowerCase() ===
+        candidate[common]!.toLocaleLowerCase()
+    ) {
+      common += 1;
+    }
+    completion = completion.slice(0, common);
+  }
+  if (completion.length <= prefix.length)
+    return { sql, cursor: position, matches };
+  const inserted = completion.slice(prefix.length);
+  return {
+    sql: `${sql.slice(0, position)}${inserted}${sql.slice(position)}`,
+    cursor: position + inserted.length,
+    matches,
+  };
+}
+
 export function deleteQueryBackward(sql: string, cursor: number) {
   const position = clampCursor(sql, cursor);
   if (position === 0) return { sql, cursor: position };

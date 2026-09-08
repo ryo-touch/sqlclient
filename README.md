@@ -90,17 +90,21 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 | `e`             | 左側のSQL editorを開く                     |
 | `Cmd+Enter`     | editorのSQLを実行                          |
 | `Ctrl-G`        | editorのSQLを外部エディタで編集            |
+| `Ctrl-Space`    | table名・column名を補完                    |
 | `Ctrl-X`        | 接続先の選択画面を開く                     |
 | `Ctrl-R`        | 現在の接続先へ再接続                       |
 | `r`             | 直近または選択中のクエリを再実行           |
 | `n` / `p`       | table結果の次 / 前ページ                   |
 | `y`             | 選択セルまたはtable名を `pbcopy` へコピー  |
+| `w`             | 現在のresultをTSVファイルへ書き出す        |
 | `/`             | 大文字小文字を区別しないフィルタ           |
 | `?`             | help                                       |
 | `q` / `Esc`     | 一つ前へ戻る。connectionsでは終了          |
 | `Ctrl-C`        | 実行中クエリを中断                         |
 
 クエリ履歴は新しい順に最大500件を `~/.config/sqlclient/history.jsonl` へ0600で保存します。
+
+resultで `w` を押すと、保持中の列名と全行をカレントディレクトリの `sqlclient-result-YYYYMMDD-HHmmss.tsv` へ書き出します。既存ファイルは上書きせず、同名の場合は連番を付けます。`NULL` は空欄、タブ・改行・ダブルクォートを含む値はダブルクォートで囲みます。
 
 接続中に `Ctrl-X` を押すと接続一覧へ移動し、現在の接続は `active` と表示されます。別の接続が成功してから元のsessionを閉じるため、接続失敗時は元の接続とSQL draftを維持します。`Esc` で切り替えを中止できます。`Ctrl-R` は現在の接続設定を再解決してsessionを作り直します。
 
@@ -111,6 +115,8 @@ connectionsで接続先を選んで `Enter` を押すとcatalogへ移動しま�
 query画面の左側で複数行SQLを編集でき、右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → history、`Shift+Tab` で逆順にfocusを切り替えます。
 
 editorにfocusして `Ctrl-G` を押すと、現在のSQLを一時的な `.sql` ファイルへ書き出し、外部エディタで編集できます。`VISUAL`、次に `EDITOR` の順で環境変数を参照します。`code --wait` のように、エディタ名と引数をまとめて設定できます。保存してエディタを閉じると編集結果がSQL draftへ戻り、一時ファイルは削除されます。
+
+`Ctrl-Space` はcursor直前の識別子を、選択中schemaのtable名・column名から大文字小文字を区別せず補完します。候補が複数ある場合は共通prefixまで入力し、候補をstatusへ表示します。metadataはschemaごとに初回だけ取得します。
 
 端末の高さが28行未満、または履歴が空の場合はHistory paneを隠し、その高さをSQL editorへ割り当てます。Historyが非表示のときは `Tab` / `Shift+Tab` の移動対象からも除外します。
 
