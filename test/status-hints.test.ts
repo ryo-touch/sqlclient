@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 
 import {
   fitStatusHints,
-  renderStatusHints,
   statusHintLine,
   statusHints,
 } from "../src/core/status-hints.ts";
@@ -78,9 +77,22 @@ describe("status bar hints", () => {
     }
   });
 
+  test("reaching the other panes survives an 80 column terminal", () => {
+    // Entering query mode lands on the editor, so losing Tab there strands the
+    // user: the editor pane has no `? help` hint either.
+    for (const focus of ["editor", "result", "history"] as QueryFocus[]) {
+      const line = statusHintLine("query", focus, 80);
+      expect({ focus, line, hasTab: line.includes("Tab panes") }).toMatchObject(
+        {
+          hasTab: true,
+        },
+      );
+    }
+  });
+
   test("connection controls appear wherever they are accepted", () => {
     for (const { mode, focus } of SURFACES) {
-      const line = renderStatusHints(statusHints(mode, focus), 200);
+      const line = statusHintLine(mode, focus, 200);
       const accepted = mode !== "connections" && mode !== "help";
       expect(line.includes("Ctrl-X")).toBe(accepted);
       expect(line.includes("Ctrl-R")).toBe(accepted);
@@ -88,9 +100,9 @@ describe("status bar hints", () => {
   });
 
   test("query mode hints follow the focused pane", () => {
-    const editor = renderStatusHints(statusHints("query", "editor"), 200);
-    const result = renderStatusHints(statusHints("query", "result"), 200);
-    const history = renderStatusHints(statusHints("query", "history"), 200);
+    const editor = statusHintLine("query", "editor", 200);
+    const result = statusHintLine("query", "result", 200);
+    const history = statusHintLine("query", "history", 200);
     expect(editor).toContain("Ctrl-Space complete");
     expect(result).toContain("w TSV");
     expect(history).toContain("Enter load");

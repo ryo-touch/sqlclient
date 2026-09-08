@@ -56,12 +56,13 @@ const RESULT: readonly KeyHint[] = [
 const QUERY_EDITOR: readonly KeyHint[] = [
   { keys: "type", label: "SQL" },
   { keys: "Cmd+Enter", label: "run" },
-  // Ahead of the optional keys: at 80 columns the prefix and the long
-  // Ctrl- names leave room for four hints, and one of them has to be the exit.
+  // Leaving the pane and reaching the other panes both outrank the two Ctrl-
+  // keys here: 80 columns minus the focus prefix affords five hints, and the
+  // long "Ctrl-G external" is the one that does not make the cut.
   { keys: "Esc", label: "back" },
   { keys: "Ctrl-Space", label: "complete" },
+  { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
   { keys: "Ctrl-G", label: "external editor", short: "external" },
-  { keys: "Tab", label: "panes" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -151,10 +152,9 @@ export function fitStatusHints(
   return { hints: hints.slice(0, 1), short: true };
 }
 
-export function renderStatusHints(
-  hints: readonly KeyHint[],
-  columns: number,
-): string {
+// Deliberately not exported: taking a raw column budget is exactly the shape
+// that let a caller pass the terminal width and forget the prefix.
+function renderStatusHints(hints: readonly KeyHint[], columns: number): string {
   return join(fitStatusHints(hints, columns));
 }
 
