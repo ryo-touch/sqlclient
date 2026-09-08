@@ -1,6 +1,11 @@
 import type { DatabaseSession } from "./connection.ts";
 import type { Dialect } from "./dialect/index.ts";
-import type { ColumnRef, SchemaRef, TableRef } from "../types.ts";
+import type {
+  ColumnRef,
+  ConnectionSummary,
+  SchemaRef,
+  TableRef,
+} from "../types.ts";
 
 function records(
   value: unknown,
@@ -140,6 +145,26 @@ export async function listColumns(
       ? [{ schema: resultSchema, table, column }]
       : [];
   });
+}
+
+/**
+ * Cache key for the completion candidates of one schema on one connection.
+ * A connection is identified by name, engine and source everywhere else in the
+ * app, so the key needs all three: two credential stores can hold an entry of
+ * the same name for the same engine without pointing at the same server.
+ * Serialised rather than joined, because a connection or schema name may
+ * contain whatever character a separator would use.
+ */
+export function completionCacheKey(
+  connection: ConnectionSummary,
+  schema: string,
+): string {
+  return JSON.stringify([
+    connection.source,
+    connection.engine,
+    connection.name,
+    schema,
+  ]);
 }
 
 export async function selectSchema(

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, type Dispatch } from "react";
 import type { useApp } from "ink";
 
 import {
+  completionCacheKey,
   listColumns,
   listSchemas,
   listTables,
@@ -312,7 +313,7 @@ export function useAppActions({
     const connected = session.current;
     const schema = state.selectedSchema;
     if (!connected || !schema) return;
-    const cacheKey = `${connected.info.engine}:${connected.info.name}:${schema}`;
+    const cacheKey = completionCacheKey(connected.info, schema);
     let candidates = completionCache.current.get(cacheKey);
     if (!candidates) {
       // The first completion runs a real query on the reserved session, so it has

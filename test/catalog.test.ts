@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   CatalogCancelledError,
+  completionCacheKey,
   listColumns,
   listTables,
   selectSchema,
@@ -63,6 +64,52 @@ describe("catalog normalization", () => {
     expect(columns).toEqual([
       { schema: "app", table: "items", column: "item_id" },
     ]);
+  });
+});
+
+describe("completion cache key", () => {
+  const base = {
+    name: "staging",
+    engine: "postgres" as const,
+    source: "pg_service" as const,
+    host: "db.example.test",
+    port: 5432,
+    user: "reader",
+  };
+
+  test("separates connections that only differ by store", () => {
+    // A login path and a pg_service entry may share a name and an engine and
+    // still be different servers, which is why connection identity is
+    // name + engine + source everywhere else in the app.
+    expect(completionCacheKey({ ...base, source: "env" }, "app")).not.toBe(
+      completionCacheKey(base, "app"),
+    );
+    expect(
+      completionCacheKey({ ...base, engine: "mysql", port: 3306 }, "app"),
+    ).not.toBe(completionCacheKey(base, "app"));
+    expect(completionCacheKey({ ...base, name: "other" }, "app")).not.toBe(
+      completionCacheKey(base, "app"),
+    );
+    expect(completionCacheKey(base, "other")).not.toBe(
+      completionCacheKey(base, "app"),
+    );
+  });
+
+  test("ignores the fields that do not identify a connection", () => {
+    // Host, port, user and database come from the store and may be re-resolved
+    // by Ctrl-R; the cached candidates belong to the entry, not to that answer.
+    expect(
+      completionCacheKey(
+        { ...base, host: "10.0.0.1", port: 6543, user: "other" },
+        "app",
+      ),
+    ).toBe(completionCacheKey(base, "app"));
+  });
+
+  test("keeps names apart when they contain separator characters", () => {
+    expect(completionCacheKey({ ...base, name: "a:b" }, "c")).not.toBe(
+      completionCacheKey({ ...base, name: "a" }, "b:c"),
+    );
   });
 });
 
