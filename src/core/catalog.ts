@@ -51,6 +51,7 @@ function tableType(value: unknown): TableRef["type"] {
 export class CatalogCancelledError extends Error {
   constructor() {
     super("Query cancelled");
+    this.name = "CatalogCancelledError";
   }
 }
 
@@ -59,8 +60,12 @@ export class CatalogCancelledError extends Error {
  * back down. executeTimed does that for user queries; a catalog read has to do
  * the same, or a Ctrl-C here leaves the flag standing and the next successful
  * user query is reported as cancelled.
+ *
+ * Reads only: the caller discards the rows, so a read that raced a cancel is
+ * reported as cancelled. A statement that moves the server session cannot be
+ * disowned that way — see selectSchema.
  */
-async function runCatalog<T>(
+async function runCatalogRead<T>(
   session: DatabaseSession,
   run: () => Promise<T>,
 ): Promise<T> {
@@ -80,7 +85,7 @@ export async function listSchemas(
   dialect: Dialect,
   includeSystem = false,
 ): Promise<SchemaRef[]> {
-  const result: unknown = await runCatalog(session, () =>
+  const result: unknown = await runCatalogRead(session, () =>
     session.executeCatalog(dialect.listSchemas(includeSystem)),
   );
   return records(result)
@@ -94,7 +99,7 @@ export async function listTables(
   dialect: Dialect,
   schema: string,
 ): Promise<TableRef[]> {
-  const result: unknown = await runCatalog(session, () =>
+  const result: unknown = await runCatalogRead(session, () =>
     session.executeCatalog(
       dialect.listTables(schema),
       dialect.tableParameters(schema),
@@ -121,7 +126,7 @@ export async function listColumns(
   dialect: Dialect,
   schema: string,
 ): Promise<ColumnRef[]> {
-  const result: unknown = await runCatalog(session, () =>
+  const result: unknown = await runCatalogRead(session, () =>
     session.executeCatalog(
       dialect.listColumns(schema),
       dialect.columnParameters(schema),
@@ -142,7 +147,15 @@ export async function selectSchema(
   dialect: Dialect,
   schema: string,
 ): Promise<void> {
-  await runCatalog(session, () =>
-    session.executeCatalog(dialect.selectSchema(schema)),
-  );
+  try {
+    await session.executeCatalog(dialect.selectSchema(schema));
+    // This statement moved the server session, so the caller has to record the
+    // new schema even if a Ctrl-C raced it to the finish. Take the flag down
+    // without turning a switch that already happened into an error, or the
+    // Header and unqualified SQL end up pointing at different schemas.
+    session.takeCancellation();
+  } catch (error) {
+    if (session.takeCancellation()) throw new CatalogCancelledError();
+    throw error;
+  }
 }

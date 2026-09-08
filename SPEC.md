@@ -250,6 +250,8 @@ export interface Dialect {
 - ユーザーが Ink 内 editor で書いた SQL の実行（そもそも任意の文字列なので、パラメータ化のしようがない）
 - `quoteIdent` を通した識別子を組み込んだカタログ用クエリ。値部分は `sql.unsafe` の第 2 引数でバインドする
 
+カタログ取得は `Ctrl-C` の中断要求を、ユーザーSQLと同じく**ちょうど一度だけ**消費する。中断されたカタログ取得は結果を捨てて「Query cancelled」として報告する。ただしschema選択のようにサーバのsession状態を動かす文は例外で、サーバ側で完了した場合は中断要求を消費したうえで成功として扱う（選択済みschemaとHeaderの表示が食い違わないようにするため）。
+
 - スキーマ一覧
   - MySQL: `information_schema.schemata` から。`information_schema` `performance_schema` `mysql` `sys` は既定で除外し、トグルで表示できるようにする
   - PostgreSQL: `information_schema.schemata` から。`pg_catalog` `information_schema` と `pg_` 前置のものを既定で除外する
