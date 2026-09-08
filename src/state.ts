@@ -43,6 +43,7 @@ export interface AppState {
   queryDraft: string;
   queryCursor: number;
   queryFocus: QueryFocus;
+  connectionReturnMode?: Exclude<Mode, "connections" | "help">;
   resultSource?:
     { kind: "table"; schema: string; table: string } | { kind: "query" };
 }
@@ -83,9 +84,15 @@ export type Action =
   | { type: "clearMessage" }
   | { type: "addWarnings"; warnings: string[] }
   | { type: "connectionStarted" }
-  | { type: "connectionSucceeded"; connection: ConnectionSummary }
-  | { type: "connectionFailed"; error: QueryError }
+  | {
+      type: "connectionSucceeded";
+      connection: ConnectionSummary;
+      preserveDraft?: boolean;
+    }
+  | { type: "connectionFailed"; error: QueryError; preserveCurrent?: boolean }
   | { type: "returnedToConnections" }
+  | { type: "openConnectionSwitcher" }
+  | { type: "cancelConnectionSwitcher" }
   | { type: "catalogLoading"; message: string }
   | { type: "schemasLoaded"; schemas: SchemaRef[]; showSystem: boolean }
   | { type: "schemaSelected"; schema: string }
@@ -186,11 +193,12 @@ export function reducer(state: AppState, action: Action): AppState {
         resultSource: undefined,
         selectedSchema: undefined,
         expandedSchema: undefined,
-        queryDraft: "",
-        queryCursor: 0,
+        queryDraft: action.preserveDraft ? state.queryDraft : "",
+        queryCursor: action.preserveDraft ? state.queryCursor : 0,
         queryFocus: "editor",
         mode: "catalog",
         previousMode: "connections",
+        connectionReturnMode: undefined,
         selectedIndex: 0,
         filter: "",
         running: false,
@@ -201,17 +209,52 @@ export function reducer(state: AppState, action: Action): AppState {
     case "connectionFailed":
       return {
         ...state,
-        current: undefined,
+        current: action.preserveCurrent ? state.current : undefined,
         running: false,
         message: undefined,
         error: action.error,
       };
+    case "openConnectionSwitcher":
+      return state.current &&
+        state.mode !== "connections" &&
+        state.mode !== "help"
+        ? {
+            ...state,
+            mode: "connections",
+            connectionReturnMode: state.mode,
+            selectedIndex: Math.max(
+              0,
+              state.connections.findIndex(
+                (connection) =>
+                  connection.name === state.current?.name &&
+                  connection.engine === state.current.engine &&
+                  connection.source === state.current.source,
+              ),
+            ),
+            filter: "",
+            filterEditing: false,
+            error: undefined,
+          }
+        : state;
+    case "cancelConnectionSwitcher":
+      return state.connectionReturnMode
+        ? {
+            ...state,
+            mode: state.connectionReturnMode,
+            connectionReturnMode: undefined,
+            selectedIndex: 0,
+            filter: "",
+            filterEditing: false,
+            error: undefined,
+          }
+        : state;
     case "returnedToConnections":
       return {
         ...state,
         current: undefined,
         mode: "connections",
         previousMode: undefined,
+        connectionReturnMode: undefined,
         selectedIndex: 0,
         filter: "",
         schemas: [],

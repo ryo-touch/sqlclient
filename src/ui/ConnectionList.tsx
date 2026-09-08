@@ -1,10 +1,11 @@
 import { Box, Text } from "ink";
 
-import type { ConnectionListItem } from "../types.ts";
+import type { ConnectionListItem, ConnectionSummary } from "../types.ts";
 
 interface ConnectionListProps {
   connections: readonly ConnectionListItem[];
   selectedIndex: number;
+  activeConnection?: ConnectionSummary;
 }
 
 function cell(value: string, width: number): string {
@@ -16,6 +17,7 @@ function cell(value: string, width: number): string {
 export function ConnectionList({
   connections,
   selectedIndex,
+  activeConnection,
 }: ConnectionListProps) {
   if (connections.length === 0) {
     return <Text dimColor>No configured connections were found.</Text>;
@@ -29,9 +31,15 @@ export function ConnectionList({
       </Text>
       {connections.map((connection, index) => {
         const selected = index === selectedIndex;
-        const status = connection.available
-          ? "available"
-          : (connection.unavailableReason ?? "unavailable");
+        const active =
+          connection.name === activeConnection?.name &&
+          connection.engine === activeConnection.engine &&
+          connection.source === activeConnection.source;
+        const status = active
+          ? "active"
+          : connection.available
+            ? "available"
+            : (connection.unavailableReason ?? "unavailable");
         return (
           <Text
             key={`${connection.engine}:${connection.source}:${connection.name}`}

@@ -134,6 +134,7 @@ export function App() {
 
   const connectSelected = useCallback(
     async (selected: (typeof visibleConnections)[number]) => {
+      const replacingCurrent = state.current !== undefined;
       dispatch({ type: "connectionStarted" });
       const resolved = await resolveConnection(selected);
       if (resolved.warnings.length > 0) {
@@ -143,6 +144,7 @@ export function App() {
         dispatch({
           type: "connectionFailed",
           error: { message: resolved.error ?? "Connection resolution failed" },
+          preserveCurrent: replacingCurrent,
         });
         return;
       }
@@ -157,12 +159,19 @@ export function App() {
             error instanceof DatabaseConnectionError
               ? error.queryError
               : { message: "Database connection failed" },
+          preserveCurrent: replacingCurrent,
         });
         return;
       }
 
+      const previous = session.current;
       session.current = connected;
-      dispatch({ type: "connectionSucceeded", connection: connected.info });
+      await previous?.close().catch(() => undefined);
+      dispatch({
+        type: "connectionSucceeded",
+        connection: connected.info,
+        preserveDraft: replacingCurrent,
+      });
       dispatch({ type: "catalogLoading", message: "Loading schemas…" });
       try {
         const schemas = await listSchemas(
@@ -174,7 +183,7 @@ export function App() {
         dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
       }
     },
-    [visibleConnections],
+    [state.current, visibleConnections],
   );
 
   const catalogNodes = useMemo<CatalogNode[]>(() => {
@@ -463,6 +472,38 @@ export function App() {
       } else {
         exit();
       }
+      return;
+    }
+
+    if (
+      key.ctrl &&
+      input === "x" &&
+      state.current &&
+      state.mode !== "connections" &&
+      state.mode !== "help" &&
+      !state.running &&
+      key.eventType !== "release"
+    ) {
+      dispatch({ type: "openConnectionSwitcher" });
+      return;
+    }
+
+    if (
+      key.ctrl &&
+      input === "r" &&
+      state.current &&
+      state.mode !== "connections" &&
+      state.mode !== "help" &&
+      !state.running &&
+      key.eventType !== "release"
+    ) {
+      const current = state.connections.find(
+        (connection) =>
+          connection.name === state.current?.name &&
+          connection.engine === state.current.engine &&
+          connection.source === state.current.source,
+      );
+      if (current) void connectSelected(current);
       return;
     }
 
@@ -851,6 +892,8 @@ export function App() {
       } else if (selected) void connectSelected(selected);
     } else if (input === "q" || key.escape) {
       if (state.filter !== "") dispatch({ type: "clearFilter" });
+      else if (state.connectionReturnMode)
+        dispatch({ type: "cancelConnectionSwitcher" });
       else exit();
     }
   });
@@ -874,6 +917,7 @@ export function App() {
           <ConnectionList
             connections={visibleConnections}
             selectedIndex={state.selectedIndex}
+            activeConnection={state.current}
           />
         ) : state.mode === "catalog" ? (
           <CatalogTree

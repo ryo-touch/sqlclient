@@ -88,6 +88,94 @@ describe("application reducer", () => {
     });
   });
 
+  test("opens and cancels connection switching without losing query state", () => {
+    const state = {
+      ...initialState,
+      current: {
+        name: "primary",
+        engine: "postgres" as const,
+        source: "pg_service" as const,
+        host: "localhost",
+        port: 5432,
+        user: "reader",
+      },
+      connections: [
+        {
+          name: "primary",
+          engine: "postgres" as const,
+          source: "pg_service" as const,
+          available: true,
+        },
+      ],
+      mode: "query" as const,
+      queryDraft: "SELECT 1",
+    };
+    const picker = reducer(state, { type: "openConnectionSwitcher" });
+    expect(picker).toMatchObject({
+      mode: "connections",
+      connectionReturnMode: "query",
+      current: { name: "primary" },
+      queryDraft: "SELECT 1",
+    });
+    expect(reducer(picker, { type: "cancelConnectionSwitcher" })).toMatchObject(
+      {
+        mode: "query",
+        connectionReturnMode: undefined,
+        current: { name: "primary" },
+        queryDraft: "SELECT 1",
+      },
+    );
+  });
+
+  test("preserves the draft when replacing an active connection", () => {
+    const state = {
+      ...initialState,
+      queryDraft: "SELECT * FROM items",
+      queryCursor: 8,
+    };
+    expect(
+      reducer(state, {
+        type: "connectionSucceeded",
+        connection: {
+          name: "secondary",
+          engine: "mysql",
+          source: "mylogin",
+          host: "localhost",
+          port: 3306,
+          user: "reader",
+        },
+        preserveDraft: true,
+      }),
+    ).toMatchObject({
+      mode: "catalog",
+      current: { name: "secondary" },
+      queryDraft: "SELECT * FROM items",
+      queryCursor: 8,
+      result: undefined,
+    });
+  });
+
+  test("keeps the active connection when replacement fails", () => {
+    const state = {
+      ...initialState,
+      current: {
+        name: "primary",
+        engine: "postgres" as const,
+        source: "pg_service" as const,
+        host: "localhost",
+        port: 5432,
+        user: "reader",
+      },
+    };
+    expect(
+      reducer(state, {
+        type: "connectionFailed",
+        error: { message: "failed" },
+        preserveCurrent: true,
+      }).current?.name,
+    ).toBe("primary");
+  });
+
   test("returns from help to the mode that opened it", () => {
     const resultState = { ...initialState, mode: "result" as const };
     const help = reducer(resultState, { type: "showHelp" });

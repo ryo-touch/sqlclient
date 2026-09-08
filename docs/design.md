@@ -36,6 +36,8 @@ login-pathはdatabaseを保持できないため、MySQL接続直後の既定dat
 
 ## editorとresultをInk内で並べる
 
+接続切り替えでは先に新しいreserved sessionを確立し、成功してから旧sessionを閉じる。失敗時は旧sessionとSQL draftを残すことで、接続選択の失敗が作業内容の消失につながらないようにする。再接続も同じ経路を使い、login-pathやservice fileを再解決するため、更新された資格情報をprocess再起動なしで反映できる。
+
 SQLを直接書く利用を主導線として、catalogでschemaを選択した後はtable一覧を取得せずquery modeへ移動する。table閲覧は削除せず、catalogで `l` / 右矢印を押したときだけ一覧を取得する補助導線として残す。
 
 query modeはSQLを書きながら直前の結果を参照できるよう、左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
