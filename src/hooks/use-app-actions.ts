@@ -332,7 +332,9 @@ export function useAppActions({
         ];
         completionCache.current.set(cacheKey, candidates);
       } catch (error) {
-        dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
+        // toQueryError knows the resolved password and redacts it literally;
+        // the bare sanitizer only catches URL and password= shapes.
+        dispatch({ type: "showError", error: connected.toQueryError(error) });
         return;
       }
     }
