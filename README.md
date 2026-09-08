@@ -90,6 +90,8 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 | `e`             | 左側のSQL editorを開く                     |
 | `Cmd+Enter`     | editorのSQLを実行                          |
 | `Ctrl-G`        | editorのSQLを外部エディタで編集            |
+| `Ctrl-X`        | 接続先の選択画面を開く                     |
+| `Ctrl-R`        | 現在の接続先へ再接続                       |
 | `r`             | 直近または選択中のクエリを再実行           |
 | `n` / `p`       | table結果の次 / 前ページ                   |
 | `y`             | 選択セルまたはtable名を `pbcopy` へコピー  |
@@ -99,6 +101,8 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 | `Ctrl-C`        | 実行中クエリを中断                         |
 
 クエリ履歴は新しい順に最大500件を `~/.config/sqlclient/history.jsonl` へ0600で保存します。
+
+接続中に `Ctrl-X` を押すと接続一覧へ移動し、現在の接続は `active` と表示されます。別の接続が成功してから元のsessionを閉じるため、接続失敗時は元の接続とSQL draftを維持します。`Esc` で切り替えを中止できます。`Ctrl-R` は現在の接続設定を再解決してsessionを作り直します。
 
 ### SQL editorとresult
 

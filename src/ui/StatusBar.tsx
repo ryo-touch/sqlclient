@@ -14,13 +14,13 @@ interface StatusBarProps {
 function keys(mode: Mode): string {
   switch (mode) {
     case "connections":
-      return "j/k move · Enter connect · / filter · ? help · q quit";
+      return "j/k move · Enter connect · / filter · ? help · q cancel/quit";
     case "catalog":
-      return "j/k move · Enter schema→query/open table · h/l collapse/expand · s system · y copy · ? help · q back";
+      return "j/k move · Enter schema→query/open table · h/l tree · Ctrl-X switch · Ctrl-R reconnect · ? help · q back";
     case "result":
-      return "j/k rows · h/l columns · n/p page · y copy · e edit · r rerun · Tab query · ? help · q catalog";
+      return "j/k rows · h/l columns · n/p page · y copy · Ctrl-X switch · Ctrl-R reconnect · q catalog";
     case "query":
-      return "type SQL · Cmd+Enter run · Ctrl-G external editor · Tab editor/result/history · Esc back";
+      return "type SQL · Cmd+Enter run · Ctrl-G external · Ctrl-X switch · Ctrl-R reconnect · Tab panes";
     case "help":
       return "q/Esc close help";
   }

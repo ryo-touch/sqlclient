@@ -10,6 +10,8 @@ const bindings = [
   ["e", "open the in-app SQL editor"],
   ["Cmd+Enter", "execute the SQL draft"],
   ["Ctrl-G", "edit the SQL draft in $VISUAL or $EDITOR"],
+  ["Ctrl-X", "switch to another connection"],
+  ["Ctrl-R", "reconnect the active connection"],
   ["r", "rerun the most recent or selected query"],
   ["n / p", "next or previous table page"],
   ["y", "copy selected cell or table name"],
