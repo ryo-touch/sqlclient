@@ -113,6 +113,17 @@ describe("application reducer", () => {
     expect(moved.queryFocus).toBe("editor");
   });
 
+  test("replaces a query draft after external editing", () => {
+    const state = {
+      ...initialState,
+      queryDraft: "SELECT 1",
+      queryCursor: 3,
+    };
+    expect(
+      reducer(state, { type: "replaceQueryDraft", sql: "SELECT 2" }),
+    ).toMatchObject({ queryDraft: "SELECT 2", queryCursor: 8 });
+  });
+
   test("keeps the split query workbench open after execution", () => {
     const opened = reducer(initialState, {
       type: "openQueryEditor",

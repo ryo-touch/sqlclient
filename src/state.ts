@@ -109,6 +109,7 @@ export type Action =
   | { type: "deleteQueryForward" }
   | { type: "moveQueryCursor"; direction: CursorDirection }
   | { type: "setQueryFocus"; focus: QueryFocus }
+  | { type: "replaceQueryDraft"; sql: string }
   | { type: "loadHistoryQuery"; sql: string }
   | { type: "showError"; error: QueryError }
   | { type: "clearError" };
@@ -395,6 +396,12 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case "setQueryFocus":
       return { ...state, queryFocus: action.focus, selectedIndex: 0 };
+    case "replaceQueryDraft":
+      return {
+        ...state,
+        queryDraft: action.sql,
+        queryCursor: action.sql.length,
+      };
     case "loadHistoryQuery":
       return {
         ...state,
