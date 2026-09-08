@@ -354,11 +354,11 @@ export interface Dialect {
 - `Enter`: connectionsでは接続してcatalogへ移動する。catalogではschemaを選択してqueryへ移動し、tableではresultを開く
 - `Tab`: catalog ⇄ result ⇄ query を巡回
 - `Shift+Tab`: query mode の editor / result / history を逆順に巡回
-- `e`: query mode の SQL editor に移動する
+- `e`: catalog / result では query mode の SQL editor を開き、query mode では editor へfocusを移す。connections と help では受け付けない
 - `Cmd+Enter`: editor の SQL を実行する
 - `Ctrl-G`: query editor の SQL を外部editorで編集する
 - `Ctrl-Space`: query editor のtable名・column名を補完する
-- `Ctrl-X`: 現在のsessionを維持したまま接続一覧を開く。新しい接続の成功後に旧sessionを閉じる
+- `Ctrl-X`: 現在のsessionを維持したまま接続一覧を開く。新しい接続の成功後に旧sessionを閉じる。`Esc` で中止した場合は元のモードの選択位置とフィルタまで戻す
 - `Ctrl-R`: 現在の接続設定を再解決して再接続する
 - `s`: catalogでsystem schemaの表示を切り替える
 - `r`: 直近のクエリを再実行
@@ -386,8 +386,8 @@ export interface Dialect {
 
 ```ts
 export interface AppState {
-  connections: ConnectionRef[];
-  current?: ResolvedConnection;
+  connections: ConnectionListItem[];
+  current?: ConnectionSummary;
   schemas: SchemaRef[];
   tables: TableRef[];
   result?: ResultSet;
@@ -395,18 +395,37 @@ export interface AppState {
   history: HistoryEntry[];
   warnings: string[];
   mode: Mode;
+  previousMode?: Mode;
   selectedIndex: number;
+  selectedColumnIndex: number;
   columnOffset: number;
   filter: string;
   filterEditing: boolean;
   message?: string;
   running: boolean;
   lastUpdated?: Date;
+  selectedSchema?: string;
+  expandedSchema?: string;
+  showSystemSchemas: boolean;
+  queryDraft: string;
+  queryCursor: number;
+  queryFocus: QueryFocus;
+  connectionReturn?: {
+    mode: Exclude<Mode, "connections" | "help">;
+    selectedIndex: number;
+    filter: string;
+  };
+  resultSource?:
+    | { kind: "table"; schema: string; table: string }
+    | { kind: "query" };
 }
 ```
 
 - 状態遷移は「新しい値」ではなく「操作」として dispatch し、現在値への適用は reducer 側で行う。キー入力は複数キーが 1 チャンクで届くことがあり、ハンドラが持つ state は再レンダリング前の古い値になりうるため（launchpeek で踏んだのと同じ問題）
-- **`AppState` にパスワードを置かない。**`ResolvedConnection` を state に置く場合は `password` を除いた型にする
+- **`AppState` にパスワードを置かない。**接続中の接続は `password` を除いた `ConnectionSummary` として保持する
+- `previousMode` はhelpを閉じたときに戻るモード、`connectionReturn` は `Ctrl-X` を押した時点のモード・選択位置・フィルタを保持し、`Esc` での中止で元の画面へ戻すために使う
+- `selectedSchema` は接続の既定schemaとして設定済みのもの、`expandedSchema` はtable一覧を読み込んで展開中のものを指し、両者は一致しないことがある
+- `resultSource` は表示中のresultの出自を持ち、`n` / `p` / `r` の再取得先と、Headerにtable名を出すかの判断に使う
 
 ## 非機能要件
 
