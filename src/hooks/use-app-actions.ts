@@ -317,7 +317,10 @@ export function useAppActions({
     const cacheKey = `${connected.info.engine}:${connected.info.name}:${schema}`;
     let candidates = completionCache.current.get(cacheKey);
     if (!candidates) {
-      dispatch({ type: "showMessage", message: "Loading completions…" });
+      // The first completion runs a real query on the reserved session, so it has
+      // to enter the running state like every other catalog read: Ctrl-C must
+      // cancel it instead of quitting, and no second query may overwrite it.
+      dispatch({ type: "catalogLoading", message: "Loading completions…" });
       try {
         const columns = await listColumns(
           connected,
