@@ -250,6 +250,8 @@ export interface Dialect {
 - ユーザーが Ink 内 editor で書いた SQL の実行（そもそも任意の文字列なので、パラメータ化のしようがない）
 - `quoteIdent` を通した識別子を組み込んだカタログ用クエリ。値部分は `sql.unsafe` の第 2 引数でバインドする
 
+カタログ取得は `Ctrl-C` の中断要求を、ユーザーSQLと同じく**ちょうど一度だけ**消費する。中断されたカタログ取得は結果を捨てて「Query cancelled」として報告する。ただしschema選択のようにサーバのsession状態を動かす文は例外で、サーバ側で完了した場合は中断要求を消費したうえで成功として扱う（選択済みschemaとHeaderの表示が食い違わないようにするため）。
+
 - スキーマ一覧
   - MySQL: `information_schema.schemata` から。`information_schema` `performance_schema` `mysql` `sys` は既定で除外し、トグルで表示できるようにする
   - PostgreSQL: `information_schema.schemata` から。`pg_catalog` `information_schema` と `pg_` 前置のものを既定で除外する
@@ -272,9 +274,9 @@ export interface Dialect {
 - query mode は左に複数行 SQL editor、右に直近の result を同時表示する
 - 通常の `Enter` は改行、macOS の `Cmd+Enter` は現在の SQL を実行する
 - editorにfocus中の `Ctrl-G` は現在のSQLを一時 `.sql` ファイルへ書き出し、外部editorで編集する
-- editorにfocus中の `Ctrl-Space` は選択schemaのtable名・column名からcursor直前の識別子を補完する
+- editorにfocus中の `Ctrl-Space` は選択schemaのtable名・column名からcursor直前の識別子を補完する。metadataの初回取得は実行中のクエリとして扱い、その間は他の実行キーを受け付けず `Ctrl-C` で中断できる
 - 外部editorは `VISUAL`、次に `EDITOR` を参照し、引用符を含む引数付きcommandを保持する
-- 外部editorの実行中はInkの入力を停止して端末を渡し、終了後に編集結果をdraftへ反映して一時ファイルを削除する
+- 外部editorの実行中はInkの入力とrenderの両方を止めて端末を渡し、終了後に画面を再描画して編集結果をdraftへ反映し、一時ファイルを削除する
 - 文字入力、複数行 paste、backspace / delete、上下左右・行頭・行末の cursor 移動を扱う
 - editor / result / history は `Tab` で focus を切り替える
 - editor の操作は reducer action として適用し、複数文字が 1 チャンクで届いても入力を失わない

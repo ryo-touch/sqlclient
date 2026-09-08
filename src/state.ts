@@ -458,6 +458,10 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         queryDraft: completed.sql,
         queryCursor: completed.cursor,
+        // Terminal action of the completion flow: it ends the metadata load the
+        // same way schemasLoaded and tablesLoaded do. A cache hit never started
+        // one, so clearing the flag there is a no-op.
+        running: false,
         message:
           completed.matches.length > 1
             ? `Matches: ${matchPreview}${completed.matches.length > 5 ? ", …" : ""}`

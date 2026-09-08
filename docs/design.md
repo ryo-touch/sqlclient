@@ -42,9 +42,9 @@ SQLを直接書く利用を主導線として、catalogでschemaを選択した�
 
 query modeはSQLを書きながら直前の結果を参照できるよう、左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
 
-長いSQLは `Ctrl-G` で外部editorへ渡す。Codex CLIと同様に `VISUAL` を `EDITOR` より優先し、shell形式でcommandを分割するため `code --wait` のような引数も利用できる。SQLだけを一時 `.sql` ファイルへ保存し、子processには端末の標準入出力を継承する。起動中はInkの入力を無効化してraw modeを解除し、終了後に画面と入力を復元する。一時directoryは成功・失敗のどちらでも削除する。
+長いSQLは `Ctrl-G` で外部editorへ渡す。Codex CLIと同様に `VISUAL` を `EDITOR` より優先し、shell形式でcommandを分割するため `code --wait` のような引数も利用できる。SQLだけを一時 `.sql` ファイルへ保存し、子processには端末の標準入出力を継承する。端末の受け渡しはInkの `suspendTerminal` に委ねる。入力を止めるだけでは足りず、その間もrender loopは動いていてmessageを消すtimerが発火するとeditorの画面へframeを描いてしまうためである。`suspendTerminal` はframeを消し、suspend中のrenderを捨て、raw mode・bracketed paste・kitty protocolを戻して全画面を再描画する。一時directoryは成功・失敗のどちらでも削除する。
 
-補完metadataは通常のcatalog navigationを重くしないよう、`Ctrl-Space` の初回だけ `information_schema.columns` から取得して接続・schema単位でcacheする。候補が一つなら末尾まで、複数なら共通prefixまで挿入することでpopupを増やさず曖昧さを残す。
+補完metadataは通常のcatalog navigationを重くしないよう、`Ctrl-Space` の初回だけ `information_schema.columns` から取得して接続・schema単位でcacheする。この初回取得は予約sessionへ投げる実クエリなので、他のcatalog取得と同じく実行中として扱い、`Ctrl-C` で中断できる。候補が一つなら末尾まで、複数なら共通prefixまで挿入することでpopupを増やさず曖昧さを残す。
 
 縦幅が限られる場合はSQL入力を優先する。端末高が28行未満、または履歴が空ならHistory pane自体を隠し、focus巡回からも除外する。表示できる場合も履歴は最大5件に抑え、増えた高さはSQL editorへ割り当てる。
 
