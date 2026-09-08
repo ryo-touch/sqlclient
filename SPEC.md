@@ -221,6 +221,7 @@ export interface HistoryEntry {
 - IPv6 literalは角括弧を除いたhostとして渡す
 - 選択中はpoolから1本をreserveし、schema選択、クエリ、backend IDを同じsessionへ結び付ける
 - MySQLは `max_execution_time`、PostgreSQLは `statement_timeout` を30秒へ設定する
+- DB由来のエラーは、その問い合わせを実行したsessionの sanitizer（`toQueryError`）を通して表示する。解決済みpasswordを literal として除去できるのはそのsessionだけで、接続を渡さない sanitizer はURL形式と `password=` 形式しか落とせない
 - アプリはSQL文字列やgrantを検査せず、read-only確認済みという状態や表示を持たない
 - 書き込み防止には、対象schema/tableへの参照権限だけを持つ専用DBアカウントを使う
 
@@ -354,11 +355,11 @@ export interface Dialect {
 - `Enter`: connectionsでは接続してcatalogへ移動する。catalogではschemaを選択してqueryへ移動し、tableではresultを開く
 - `Tab`: catalog ⇄ result ⇄ query を巡回
 - `Shift+Tab`: query mode の editor / result / history を逆順に巡回
-- `e`: query mode の SQL editor に移動する
+- `e`: catalog / result では query mode の SQL editor を開き、query mode では editor へfocusを移す。connections と help では受け付けない
 - `Cmd+Enter`: editor の SQL を実行する
 - `Ctrl-G`: query editor の SQL を外部editorで編集する
 - `Ctrl-Space`: query editor のtable名・column名を補完する
-- `Ctrl-X`: 現在のsessionを維持したまま接続一覧を開く。新しい接続の成功後に旧sessionを閉じる
+- `Ctrl-X`: 現在のsessionを維持したまま接続一覧を開く。新しい接続の成功後に旧sessionを閉じる。`Esc` で中止した場合は元のモードの選択位置とフィルタまで戻す
 - `Ctrl-R`: 現在の接続設定を再解決して再接続する
 - `s`: catalogでsystem schemaの表示を切り替える
 - `r`: 直近のクエリを再実行
@@ -372,7 +373,8 @@ export interface Dialect {
 ### StatusBar
 
 - 通常時: 現在モードで使えるキーの一覧。モードごとに重要な順の一覧を 1 本だけ持ち、端末幅に応じて 表記の短縮 → 末尾の省略 の順で収める。**狭い端末で出るキーは、広い端末で出るキーの接頭辞でなければならない**。現在のモードから抜けるキーは 80 桁で必ず残す
-- 実行中: 経過秒数を表示し、`Ctrl-C` で中断できることを示す
+- 一覧にはそのモードが実際に受け付けるキーを載せる。`?` はhelpとquery editorを除く全モードに載せる（query editorは `?` を文字として入力するため）。`/` はフィルタを持つモードに載せる
+- 実行中: 実行中の処理名（"Loading tables" 等）と経過秒数を表示し、`Ctrl-C` で中断できることを示す。処理名が端末幅に収まらないときは処理名を落として `Running` の表記に戻す
 - 実行後: 行数と所要時間を 3 秒表示して元に戻す
 - エラー時: サーバのエラーメッセージ先頭行を赤で表示する
 
@@ -386,8 +388,8 @@ export interface Dialect {
 
 ```ts
 export interface AppState {
-  connections: ConnectionRef[];
-  current?: ResolvedConnection;
+  connections: ConnectionListItem[];
+  current?: ConnectionSummary;
   schemas: SchemaRef[];
   tables: TableRef[];
   result?: ResultSet;
@@ -395,18 +397,37 @@ export interface AppState {
   history: HistoryEntry[];
   warnings: string[];
   mode: Mode;
+  previousMode?: Mode;
   selectedIndex: number;
+  selectedColumnIndex: number;
   columnOffset: number;
   filter: string;
   filterEditing: boolean;
   message?: string;
   running: boolean;
   lastUpdated?: Date;
+  selectedSchema?: string;
+  expandedSchema?: string;
+  showSystemSchemas: boolean;
+  queryDraft: string;
+  queryCursor: number;
+  queryFocus: QueryFocus;
+  connectionReturn?: {
+    mode: Exclude<Mode, "connections" | "help">;
+    selectedIndex: number;
+    filter: string;
+  };
+  resultSource?:
+    | { kind: "table"; schema: string; table: string }
+    | { kind: "query" };
 }
 ```
 
 - 状態遷移は「新しい値」ではなく「操作」として dispatch し、現在値への適用は reducer 側で行う。キー入力は複数キーが 1 チャンクで届くことがあり、ハンドラが持つ state は再レンダリング前の古い値になりうるため（launchpeek で踏んだのと同じ問題）
-- **`AppState` にパスワードを置かない。**`ResolvedConnection` を state に置く場合は `password` を除いた型にする
+- **`AppState` にパスワードを置かない。**接続中の接続は `password` を除いた `ConnectionSummary` として保持する
+- `previousMode` はhelpを閉じたときに戻るモード、`connectionReturn` は `Ctrl-X` を押した時点のモード・選択位置・フィルタを保持し、`Esc` での中止で元の画面へ戻すために使う
+- `selectedSchema` は接続の既定schemaとして設定済みのもの、`expandedSchema` はtable一覧を読み込んで展開中のものを指し、両者は一致しないことがある
+- `resultSource` は表示中のresultの出自を持ち、`n` / `p` / `r` の再取得先と、Headerにtable名を出すかの判断に使う
 
 ## 非機能要件
 

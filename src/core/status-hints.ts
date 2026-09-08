@@ -31,10 +31,13 @@ const CATALOG: readonly KeyHint[] = [
   { keys: "j/k", label: "move" },
   { keys: "Enter", label: "schema→query/open table", short: "query/open" },
   { keys: "h/l", label: "tree" },
+  { keys: "/", label: "filter" },
   { keys: "s", label: "system schemas", short: "sys" },
   { keys: "y", label: "copy" },
+  { keys: "e", label: "SQL editor", short: "SQL" },
   { keys: "?", label: "help" },
   { keys: "q", label: "back" },
+  { keys: "Tab", label: "query/result", short: "query" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -48,11 +51,13 @@ const RESULT: readonly KeyHint[] = [
   { keys: "e", label: "SQL editor", short: "SQL" },
   { keys: "r", label: "rerun" },
   { keys: "Tab", label: "query" },
+  { keys: "?", label: "help" },
   { keys: "q", label: "catalog", short: "back" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
 
+// No `? help` here, unlike every other surface: the editor takes `?` as text.
 const QUERY_EDITOR: readonly KeyHint[] = [
   { keys: "type", label: "SQL" },
   { keys: "Cmd+Enter", label: "run" },
@@ -75,6 +80,9 @@ const QUERY_RESULT: readonly KeyHint[] = [
   { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
   { keys: "e", label: "editor" },
   { keys: "Esc", label: "back" },
+  // Below the exit: at 80 columns the prefix leaves room for the keys above,
+  // and help is the one hint a reader can do without on a narrow terminal.
+  { keys: "?", label: "help" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -85,6 +93,7 @@ const QUERY_HISTORY: readonly KeyHint[] = [
   { keys: "r", label: "run" },
   { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
   { keys: "Esc", label: "back" },
+  { keys: "?", label: "help" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -181,4 +190,28 @@ export function statusHintLine(
     terminalColumns - HORIZONTAL_PADDING - Bun.stringWidth(prefix),
   );
   return prefix + renderStatusHints(statusHints(mode, queryFocus), columns);
+}
+
+/**
+ * The status line while something is in flight. `message` names the operation
+ * ("Loading tables…"), which the running row used to swallow: it was rendered
+ * ahead of the message, so schemas, tables, schema selection and completion
+ * loads were indistinguishable. Dropped again when it does not fit, because
+ * the elapsed time and the way to cancel matter more than the name.
+ */
+export function statusRunningLine(
+  seconds: number,
+  message: string | undefined,
+  terminalColumns: number,
+): string {
+  const columns = Math.max(1, terminalColumns - HORIZONTAL_PADDING);
+  // The trailing ellipsis reads as "in progress" on its own, which is what the
+  // elapsed time now says: "Loading tables… 0.4s" would say it twice.
+  const label = message?.replace(/…+$/u, "").trimEnd();
+  const elapsed = `${seconds.toFixed(1)}s · Ctrl-C cancel`;
+  if (label !== undefined && label !== "") {
+    const composed = `${label} ${elapsed}`;
+    if (Bun.stringWidth(composed) <= columns) return composed;
+  }
+  return `Running ${elapsed}`;
 }

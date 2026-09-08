@@ -1,6 +1,6 @@
 import { Text, useStdout } from "ink";
 
-import { statusHintLine } from "../core/status-hints.ts";
+import { statusHintLine, statusRunningLine } from "../core/status-hints.ts";
 import type { Mode, QueryError, QueryFocus } from "../types.ts";
 
 interface StatusBarProps {
@@ -24,7 +24,7 @@ export function StatusBar({
   if (running) {
     return (
       <Text color="cyan">
-        Running {runningSeconds.toFixed(1)}s · Ctrl-C cancel
+        {statusRunningLine(runningSeconds, message, stdout.columns ?? 80)}
       </Text>
     );
   }

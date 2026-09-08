@@ -38,13 +38,17 @@ login-pathはdatabaseを保持できないため、MySQL接続直後の既定dat
 
 接続切り替えでは先に新しいreserved sessionを確立し、成功してから旧sessionを閉じる。失敗時は旧sessionとSQL draftを残すことで、接続選択の失敗が作業内容の消失につながらないようにする。再接続も同じ経路を使い、login-pathやservice fileを再解決するため、更新された資格情報をprocess再起動なしで反映できる。
 
+切り替えを `Esc` で中止したときは、モードだけでなく選択位置とフィルタも戻す。切り替え画面は自身の選択とフィルタで一覧を表示するため、それらを退避せずに戻ると、絞り込んだtable treeの途中から先頭へ飛ばされる。中止が作業位置を失う操作になるなら、確認のために一覧を覗くこともできない。
+
 SQLを直接書く利用を主導線として、catalogでschemaを選択した後はtable一覧を取得せずquery modeへ移動する。table閲覧は削除せず、catalogで `l` / 右矢印を押したときだけ一覧を取得する補助導線として残す。
 
 query modeはSQLを書きながら直前の結果を参照できるよう、左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
 
+モード固有のキーは、そのモードの分岐の中だけでdispatchする。`e` を接続の有無だけで判定していたときは、接続一覧（`Ctrl-X` の切り替え画面を含む。接続は保持されたままなので条件を満たす）でも押せてしまい、接続を選ぶ画面が勝手にeditorへ切り替わっていた。同時に、query paneが持つ `e`（editorへfocusを戻す）が手前の判定に食われて到達しなくなっていた。
+
 長いSQLは `Ctrl-G` で外部editorへ渡す。Codex CLIと同様に `VISUAL` を `EDITOR` より優先し、shell形式でcommandを分割するため `code --wait` のような引数も利用できる。SQLだけを一時 `.sql` ファイルへ保存し、子processには端末の標準入出力を継承する。端末の受け渡しはInkの `suspendTerminal` に委ねる。入力を止めるだけでは足りず、その間もrender loopは動いていてmessageを消すtimerが発火するとeditorの画面へframeを描いてしまうためである。`suspendTerminal` はframeを消し、suspend中のrenderを捨て、raw mode・bracketed paste・kitty protocolを戻して全画面を再描画する。一時directoryは成功・失敗のどちらでも削除する。
 
-補完metadataは通常のcatalog navigationを重くしないよう、`Ctrl-Space` の初回だけ `information_schema.columns` から取得して接続・schema単位でcacheする。この初回取得は予約sessionへ投げる実クエリなので、他のcatalog取得と同じく実行中として扱い、`Ctrl-C` で中断できる。候補が一つなら末尾まで、複数なら共通prefixまで挿入することでpopupを増やさず曖昧さを残す。
+補完metadataは通常のcatalog navigationを重くしないよう、`Ctrl-Space` の初回だけ `information_schema.columns` から取得して接続・schema単位でcacheする。cacheのキーは接続を名前・engine・出自の3つで識別する。credential storeが違えば同名同engineでも別サーバであり得るためで、`Ctrl-R` の再接続先や `Ctrl-X` の一覧で現在の接続を探すときと同じ識別の仕方に揃えた。この初回取得は予約sessionへ投げる実クエリなので、他のcatalog取得と同じく実行中として扱い、`Ctrl-C` で中断できる。候補が一つなら末尾まで、複数なら共通prefixまで挿入することでpopupを増やさず曖昧さを残す。
 
 縦幅が限られる場合はSQL入力を優先する。端末高が28行未満、または履歴が空ならHistory pane自体を隠し、focus巡回からも除外する。表示できる場合も履歴は最大5件に抑え、増えた高さはSQL editorへ割り当てる。
 
@@ -55,6 +59,8 @@ resultのTSV出力は画面に保持している列名と行を対象にし、�
 Inkの `Static` は追記専用で選択行の更新に向かない。catalog、history、resultはいずれも選択位置の周辺だけをrenderし、resultのcolumnも端末幅へ収まる分だけ作る。DB取得上限だけではReact要素数を抑えられないため、取得・保持・描画を別々に制限している。
 
 resultの幅計算には文字数ではなく `Bun.stringWidth` を使う。日本語や絵文字を含む値でも罫線を揃え、数値列は右寄せ、文字列は左寄せにして比較しやすくする。
+
+status barの1行にも同じ収め方を使う。実行中の行は処理名・経過秒数・中断キーを並べるが、優先度は経過秒数と中断キーが上で、処理名は幅に収まらなければ落とす。どの取得が動いているかは分からなくなっても、止められること自体は分かる状態を保つためである。キー一覧も同じ理由で、モードを抜けるキーを残し、全モードで効く `Ctrl-X` / `Ctrl-R` を先に落とす。80桁のcatalogでは、そのモードでしか効かない `/` を優先して `Ctrl-X` を落とす。
 
 ## 検証用credential storeを分離する
 
