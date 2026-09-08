@@ -151,18 +151,23 @@ export async function listColumns(
  * Cache key for the completion candidates of one schema on one connection.
  * A connection is identified by name, engine and source everywhere else in the
  * app, so the key needs all three: two credential stores can hold an entry of
- * the same name for the same engine without pointing at the same server.
- * Serialised rather than joined, because a connection or schema name may
- * contain whatever character a separator would use.
+ * the same name for the same engine without pointing at the same server. The
+ * resolved database also determines its schema contents, so re-resolving an
+ * entry to a different database needs a separate cache entry. Serialise rather
+ * than join because a connection or schema name may contain any separator.
  */
 export function completionCacheKey(
-  connection: ConnectionSummary,
+  connection: Pick<
+    ConnectionSummary,
+    "source" | "engine" | "name" | "database"
+  >,
   schema: string,
 ): string {
   return JSON.stringify([
     connection.source,
     connection.engine,
     connection.name,
+    connection.database ?? null,
     schema,
   ]);
 }
