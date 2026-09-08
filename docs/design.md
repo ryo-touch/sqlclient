@@ -56,6 +56,8 @@ Inkの `Static` は追記専用で選択行の更新に向かない。catalog、
 
 resultの幅計算には文字数ではなく `Bun.stringWidth` を使う。日本語や絵文字を含む値でも罫線を揃え、数値列は右寄せ、文字列は左寄せにして比較しやすくする。
 
+status barの1行にも同じ収め方を使う。実行中の行は処理名・経過秒数・中断キーを並べるが、優先度は経過秒数と中断キーが上で、処理名は幅に収まらなければ落とす。どの取得が動いているかは分からなくなっても、止められること自体は分かる状態を保つためである。キー一覧も同じ理由で、モードを抜けるキーを残し、全モードで効く `Ctrl-X` / `Ctrl-R` を先に落とす。80桁のcatalogでは、そのモードでしか効かない `/` を優先して `Ctrl-X` を落とす。
+
 ## 検証用credential storeを分離する
 
 PostgreSQLはlibpq標準の `PGSERVICEFILE` / `PGPASSFILE`、MySQLは `MYSQL_TEST_LOGIN_FILE` を尊重する。Docker検証で利用者本人のstoreを書き換えず、同じparser／resolver経路を通せるためである。
