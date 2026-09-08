@@ -27,6 +27,7 @@ import { executeTablePage, executeUserQuery, PAGE_SIZE } from "./core/query.ts";
 import { cycleQueryFocus, queryWorkbenchLayout } from "./core/query-editor.ts";
 import { loadHistory, recordHistory } from "./core/history.ts";
 import { copyValue } from "./core/clipboard.ts";
+import { exportResultTsv } from "./core/export.ts";
 import {
   editSqlExternally,
   resolveEditorCommand,
@@ -311,6 +312,22 @@ export function App() {
     }
   }, [catalogNodes, state]);
 
+  const exportResult = useCallback(async () => {
+    if (!state.result) {
+      dispatch({ type: "showMessage", message: "No result to export" });
+      return;
+    }
+    try {
+      const path = await exportResultTsv(state.result);
+      dispatch({ type: "showMessage", message: `Exported TSV to ${path}` });
+    } catch {
+      dispatch({
+        type: "showError",
+        error: { message: "TSV export failed" },
+      });
+    }
+  }, [state.result]);
+
   const openExternalEditor = useCallback(async () => {
     if (externalEditorActive.current) return;
     externalEditorActive.current = true;
@@ -534,6 +551,16 @@ export function App() {
         (state.mode === "query" && state.queryFocus === "result"))
     ) {
       void copySelection();
+      return;
+    }
+
+    if (
+      !state.filterEditing &&
+      input === "w" &&
+      (state.mode === "result" ||
+        (state.mode === "query" && state.queryFocus === "result"))
+    ) {
+      void exportResult();
       return;
     }
 

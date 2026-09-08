@@ -340,6 +340,7 @@ export interface Dialect {
 - `r`: 直近のクエリを再実行
 - `n` / `p`: 次ページ / 前ページ
 - `y`: 選択中のセル値（catalog ではテーブル名）を pbcopy でコピー
+- `w`: resultの保持中データをカレントディレクトリへTSVで書き出す
 - `/`: フィルタ入力。`Esc` で解除
 - `?`: help
 - `q` / `Esc`: 一つ前のモードへ戻る。connections で押した場合は終了
