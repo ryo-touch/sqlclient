@@ -105,7 +105,7 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 
 クエリ履歴は新しい順に最大500件を `~/.config/sqlclient/history.jsonl` へ0600で保存します。
 
-resultで `w` を押すと、保持中の列名と全行をカレントディレクトリの `sqlclient-result-YYYYMMDD-HHmmss.tsv` へ書き出します。既存ファイルは上書きせず、同名の場合は連番を付けます。`NULL` は空欄、タブ・改行・ダブルクォートを含む値はダブルクォートで囲みます。
+resultで `w` を押すと、保持中の列名と全行をカレントディレクトリの `sqlclient-result-YYYYMMDD-HHmmss.tsv` へ書き出します。既存ファイルは上書きせず、同名の場合は連番を付けます。`NULL` は空欄、`Date` はミリ秒とタイムゾーンを保つISO 8601、`Uint8Array` は16進数、objectはJSONとして書き出します。タブ・改行・ダブルクォートを含む値はダブルクォートで囲みます。
 
 接続中に `Ctrl-X` を押すと接続一覧へ移動し、現在の接続は `active` と表示されます。別の接続が成功してから元のsessionを閉じるため、接続失敗時は元の接続とSQL draftを維持します。`Esc` で切り替えを中止すると、元の画面の選択位置とフィルタまで戻ります。`Ctrl-R` は現在の接続設定を再解決してsessionを作り直します。
 

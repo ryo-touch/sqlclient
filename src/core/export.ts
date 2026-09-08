@@ -5,7 +5,12 @@ import type { ResultSet } from "../types.ts";
 import { formatValue } from "../util/format.ts";
 
 function tsvCell(value: unknown): string {
-  const text = value === null ? "" : formatValue(value).text;
+  const text =
+    value === null
+      ? ""
+      : value instanceof Date
+        ? value.toISOString()
+        : formatValue(value).text;
   return /[\t\r\n"]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
