@@ -31,10 +31,13 @@ const CATALOG: readonly KeyHint[] = [
   { keys: "j/k", label: "move" },
   { keys: "Enter", label: "schema→query/open table", short: "query/open" },
   { keys: "h/l", label: "tree" },
+  { keys: "/", label: "filter" },
   { keys: "s", label: "system schemas", short: "sys" },
   { keys: "y", label: "copy" },
+  { keys: "e", label: "SQL editor", short: "SQL" },
   { keys: "?", label: "help" },
   { keys: "q", label: "back" },
+  { keys: "Tab", label: "query/result", short: "query" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -48,11 +51,13 @@ const RESULT: readonly KeyHint[] = [
   { keys: "e", label: "SQL editor", short: "SQL" },
   { keys: "r", label: "rerun" },
   { keys: "Tab", label: "query" },
+  { keys: "?", label: "help" },
   { keys: "q", label: "catalog", short: "back" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
 
+// No `? help` here, unlike every other surface: the editor takes `?` as text.
 const QUERY_EDITOR: readonly KeyHint[] = [
   { keys: "type", label: "SQL" },
   { keys: "Cmd+Enter", label: "run" },
@@ -75,6 +80,9 @@ const QUERY_RESULT: readonly KeyHint[] = [
   { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
   { keys: "e", label: "editor" },
   { keys: "Esc", label: "back" },
+  // Below the exit: at 80 columns the prefix leaves room for the keys above,
+  // and help is the one hint a reader can do without on a narrow terminal.
+  { keys: "?", label: "help" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -85,6 +93,7 @@ const QUERY_HISTORY: readonly KeyHint[] = [
   { keys: "r", label: "run" },
   { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
   { keys: "Esc", label: "back" },
+  { keys: "?", label: "help" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -182,3 +191,4 @@ export function statusHintLine(
   );
   return prefix + renderStatusHints(statusHints(mode, queryFocus), columns);
 }
+

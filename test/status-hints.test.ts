@@ -117,4 +117,26 @@ describe("status bar hints", () => {
       expect(line).toContain("Tab query");
     }
   });
+
+  test("every accepted key of a surface is advertised somewhere", () => {
+    // The keys the input handler accepts but the row never mentioned: filtering
+    // and pane switching in catalog, help outside the editor pane.
+    expect(statusHintLine("catalog", "editor", 200)).toContain("/ filter");
+    expect(statusHintLine("catalog", "editor", 200)).toContain(
+      "Tab query/result",
+    );
+    expect(statusHintLine("catalog", "editor", 80)).toContain("/ filter");
+    for (const { mode, focus } of SURFACES) {
+      const line = statusHintLine(mode, focus, 200);
+      // help closes with q/Esc; the editor pane takes `?` as text.
+      const advertises =
+        mode !== "help" && !(mode === "query" && focus === "editor");
+      expect({
+        surface: `${mode}/${focus}`,
+        line,
+        hasHelp: line.includes("? help"),
+      }).toMatchObject({ hasHelp: advertises });
+    }
+  });
 });
+
