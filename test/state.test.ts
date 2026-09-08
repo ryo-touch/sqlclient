@@ -230,6 +230,38 @@ describe("application reducer", () => {
     });
   });
 
+  test("identifier completion runs as a cancellable catalog load", () => {
+    const loading = reducer(
+      { ...initialState, queryDraft: "SELECT use", queryCursor: 10 },
+      { type: "catalogLoading", message: "Loading completions…" },
+    );
+    expect(loading.running).toBe(true);
+
+    expect(
+      reducer(loading, {
+        type: "completeQueryIdentifier",
+        candidates: ["users"],
+      }),
+    ).toMatchObject({
+      queryDraft: "SELECT users",
+      running: false,
+      message: "Completed: users",
+    });
+  });
+
+  test("a failed completion load leaves no running query behind", () => {
+    const loading = reducer(initialState, {
+      type: "catalogLoading",
+      message: "Loading completions…",
+    });
+    expect(
+      reducer(loading, {
+        type: "showError",
+        error: { message: "metadata query failed" },
+      }),
+    ).toMatchObject({ running: false, message: undefined });
+  });
+
   test("keeps the split query workbench open after execution", () => {
     const opened = reducer(initialState, {
       type: "openQueryEditor",

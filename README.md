@@ -117,7 +117,7 @@ query画面の左側で複数行SQLを編集でき、右側には直近のresult
 
 editorにfocusして `Ctrl-G` を押すと、現在のSQLを一時的な `.sql` ファイルへ書き出し、外部エディタで編集できます。`VISUAL`、次に `EDITOR` の順で環境変数を参照します。`code --wait` のように、エディタ名と引数をまとめて設定できます。保存してエディタを閉じると編集結果がSQL draftへ戻り、一時ファイルは削除されます。
 
-`Ctrl-Space` はcursor直前の識別子を、選択中schemaのtable名・column名から大文字小文字を区別せず補完します。候補が複数ある場合は共通prefixまで入力し、候補をstatusへ表示します。metadataはschemaごとに初回だけ取得します。
+`Ctrl-Space` はcursor直前の識別子を、選択中schemaのtable名・column名から大文字小文字を区別せず補完します。候補が複数ある場合は共通prefixまで入力し、候補をstatusへ表示します。metadataはschemaごとに初回だけ取得します。この取得中はクエリ実行と同じ扱いになり、経過時間が表示されて `Ctrl-C` で中断できます。
 
 端末の高さが28行未満、または履歴が空の場合はHistory paneを隠し、その高さをSQL editorへ割り当てます。Historyが非表示のときは `Tab` / `Shift+Tab` の移動対象からも除外します。
 
