@@ -7,6 +7,7 @@ export interface Dialect {
   quoteIdent(name: string): string;
   listSchemas(includeSystem?: boolean): string;
   listTables(schema: string): string;
+  listColumns(schema: string): string;
   selectSchema(schema: string): string;
   selectAll(
     schema: string,
@@ -15,6 +16,7 @@ export interface Dialect {
     offset: number,
   ): string;
   tableParameters(schema: string): readonly unknown[];
+  columnParameters(schema: string): readonly unknown[];
 }
 
 export function dialectFor(engine: Engine): Dialect {

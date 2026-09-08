@@ -1,6 +1,6 @@
 import type { DatabaseSession } from "./connection.ts";
 import type { Dialect } from "./dialect/index.ts";
-import type { SchemaRef, TableRef } from "../types.ts";
+import type { ColumnRef, SchemaRef, TableRef } from "../types.ts";
 
 function records(
   value: unknown,
@@ -84,6 +84,25 @@ export async function listTables(
         ...(approxRows === undefined ? {} : { approxRows }),
       },
     ];
+  });
+}
+
+export async function listColumns(
+  session: DatabaseSession,
+  dialect: Dialect,
+  schema: string,
+): Promise<ColumnRef[]> {
+  const result: unknown = await session.executeCatalog(
+    dialect.listColumns(schema),
+    dialect.columnParameters(schema),
+  );
+  return records(result).flatMap((row) => {
+    const resultSchema = text(field(row, "schema_name"));
+    const table = text(field(row, "table_name"));
+    const column = text(field(row, "column_name"));
+    return resultSchema && table && column
+      ? [{ schema: resultSchema, table, column }]
+      : [];
   });
 }
 

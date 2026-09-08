@@ -124,6 +124,24 @@ describe("application reducer", () => {
     ).toMatchObject({ queryDraft: "SELECT 2", queryCursor: 8 });
   });
 
+  test("applies identifier completion to the latest query state", () => {
+    const state = {
+      ...initialState,
+      queryDraft: "SELECT use",
+      queryCursor: 10,
+    };
+    expect(
+      reducer(state, {
+        type: "completeQueryIdentifier",
+        candidates: ["users", "user_id"],
+      }),
+    ).toMatchObject({
+      queryDraft: "SELECT user",
+      queryCursor: 11,
+      message: "Matches: user_id, users",
+    });
+  });
+
   test("keeps the split query workbench open after execution", () => {
     const opened = reducer(initialState, {
       type: "openQueryEditor",

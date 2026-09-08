@@ -42,6 +42,8 @@ query modeはSQLを書きながら直前の結果を参照できるよう、左e
 
 長いSQLは `Ctrl-G` で外部editorへ渡す。Codex CLIと同様に `VISUAL` を `EDITOR` より優先し、shell形式でcommandを分割するため `code --wait` のような引数も利用できる。SQLだけを一時 `.sql` ファイルへ保存し、子processには端末の標準入出力を継承する。起動中はInkの入力を無効化してraw modeを解除し、終了後に画面と入力を復元する。一時directoryは成功・失敗のどちらでも削除する。
 
+補完metadataは通常のcatalog navigationを重くしないよう、`Ctrl-Space` の初回だけ `information_schema.columns` から取得して接続・schema単位でcacheする。候補が一つなら末尾まで、複数なら共通prefixまで挿入することでpopupを増やさず曖昧さを残す。
+
 縦幅が限られる場合はSQL入力を優先する。端末高が28行未満、または履歴が空ならHistory pane自体を隠し、focus巡回からも除外する。表示できる場合も履歴は最大5件に抑え、増えた高さはSQL editorへ割り当てる。
 
 ## 表示量を端末サイズで制限する
