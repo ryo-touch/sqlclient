@@ -364,7 +364,7 @@ export interface Dialect {
 - `r`: 直近のクエリを再実行
 - `n` / `p`: 次ページ / 前ページ
 - `y`: 選択中のセル値（catalog ではテーブル名）を pbcopy でコピー
-- `w`: resultの保持中データをカレントディレクトリへTSVで書き出す
+- `w`: resultの保持中データをカレントディレクトリへTSVで書き出す。`Date` はISO 8601、`Uint8Array` は16進数、objectはJSON、`NULL` は空欄とする
 - `/`: フィルタ入力。`Esc` で解除
 - `?`: help
 - `q` / `Esc`: 一つ前のモードへ戻る。connections で押した場合は終了
