@@ -490,7 +490,7 @@ export function useAppInput({
       } else if (selected) void connectSelected(selected);
     } else if (input === "q" || key.escape) {
       if (state.filter !== "") dispatch({ type: "clearFilter" });
-      else if (state.connectionReturnMode)
+      else if (state.connectionReturn)
         dispatch({ type: "cancelConnectionSwitcher" });
       else exit();
     }
