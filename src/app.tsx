@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from "react";
-import { Box, Text, useApp, useStdin, useStdout } from "ink";
+import { Box, Text, useApp, useStdout } from "ink";
 
 import type { DatabaseSession } from "./core/connection.ts";
 import { discoverConnections } from "./core/credentials.ts";
@@ -19,9 +19,8 @@ import { StatusBar } from "./ui/StatusBar.tsx";
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const { exit } = useApp();
-  const { stdout, write } = useStdout();
-  const { stdin, setRawMode } = useStdin();
+  const { exit, suspendTerminal } = useApp();
+  const { stdout } = useStdout();
   const session = useRef<DatabaseSession | undefined>(undefined);
   const [runningSeconds, setRunningSeconds] = useState(0);
   const showQueryHistory = queryWorkbenchLayout(
@@ -98,9 +97,7 @@ export function App() {
     state,
     dispatch,
     session,
-    stdin,
-    setRawMode,
-    write,
+    suspendTerminal,
   });
 
   useAppInput({

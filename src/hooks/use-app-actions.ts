@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, type Dispatch } from "react";
-import type { useStdin, useStdout } from "ink";
+import type { useApp } from "ink";
 
 import {
   listColumns,
@@ -39,18 +39,14 @@ interface UseAppActionsOptions {
   state: AppState;
   dispatch: Dispatch<Action>;
   session: SessionRef;
-  stdin: ReturnType<typeof useStdin>["stdin"];
-  setRawMode: ReturnType<typeof useStdin>["setRawMode"];
-  write: ReturnType<typeof useStdout>["write"];
+  suspendTerminal: ReturnType<typeof useApp>["suspendTerminal"];
 }
 
 export function useAppActions({
   state,
   dispatch,
   session,
-  stdin,
-  setRawMode,
-  write,
+  suspendTerminal,
 }: UseAppActionsOptions) {
   const historyWrite = useRef<Promise<void>>(Promise.resolve());
   const externalEditorActive = useRef(false);
@@ -280,13 +276,18 @@ export function useAppActions({
     if (externalEditorActive.current) return;
     externalEditorActive.current = true;
     try {
-      setRawMode(false);
-      stdin.pause();
-      write("\u001B[?25h");
-      const edited = await editSqlExternally(
-        state.queryDraft,
-        resolveEditorCommand(),
-      );
+      let edited = "";
+      // Ink owns the terminal, so the editor has to borrow it through Ink
+      // rather than around it. suspendTerminal erases the current frame,
+      // discards renders while the child is up (the clearMessage timer would
+      // otherwise paint over it), hands input back, and forces a full redraw
+      // on return. Driving raw mode by hand left the render loop running.
+      await suspendTerminal(async () => {
+        edited = await editSqlExternally(
+          state.queryDraft,
+          resolveEditorCommand(),
+        );
+      });
       dispatch({ type: "replaceQueryDraft", sql: edited.trimEnd() });
       dispatch({
         type: "showMessage",
@@ -303,12 +304,9 @@ export function useAppActions({
         },
       });
     } finally {
-      write("\u001B[2J\u001B[H\u001B[?25l");
-      stdin.resume();
-      setRawMode(true);
       externalEditorActive.current = false;
     }
-  }, [dispatch, setRawMode, state.queryDraft, stdin, write]);
+  }, [dispatch, state.queryDraft, suspendTerminal]);
 
   const completeIdentifier = useCallback(async () => {
     const connected = session.current;
