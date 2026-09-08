@@ -13,6 +13,7 @@ const bindings = [
   ["r", "rerun the most recent or selected query"],
   ["n / p", "next or previous table page"],
   ["y", "copy selected cell or table name"],
+  ["w", "write the current result to a TSV file"],
   ["/", "filter the current list"],
   ["?", "show this help"],
   ["q / Esc", "go back, or quit from connections"],

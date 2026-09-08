@@ -93,12 +93,15 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 | `r`             | 直近または選択中のクエリを再実行           |
 | `n` / `p`       | table結果の次 / 前ページ                   |
 | `y`             | 選択セルまたはtable名を `pbcopy` へコピー  |
+| `w`             | 現在のresultをTSVファイルへ書き出す        |
 | `/`             | 大文字小文字を区別しないフィルタ           |
 | `?`             | help                                       |
 | `q` / `Esc`     | 一つ前へ戻る。connectionsでは終了          |
 | `Ctrl-C`        | 実行中クエリを中断                         |
 
 クエリ履歴は新しい順に最大500件を `~/.config/sqlclient/history.jsonl` へ0600で保存します。
+
+resultで `w` を押すと、保持中の列名と全行をカレントディレクトリの `sqlclient-result-YYYYMMDD-HHmmss.tsv` へ書き出します。既存ファイルは上書きせず、同名の場合は連番を付けます。`NULL` は空欄、タブ・改行・ダブルクォートを含む値はダブルクォートで囲みます。
 
 ### SQL editorとresult
 
