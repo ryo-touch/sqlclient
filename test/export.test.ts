@@ -17,9 +17,31 @@ const result: ResultSet = {
 };
 
 describe("TSV export", () => {
-  test("serializes headers, raw values, quoting, and NULL", () => {
+  test("serializes headers, values, quoting, and NULL", () => {
     expect(resultToTsv(result)).toBe(
       'id\tnote\tmissing\n1\t"tab\tnewline\nquote"""\t\n',
+    );
+  });
+
+  test("preserves Date precision as ISO 8601 while retaining other display formats", () => {
+    const typedResult: ResultSet = {
+      columns: ["created_at", "bytes", "metadata"],
+      rows: [
+        [
+          new Date("2026-09-08T03:04:05.678Z"),
+          new Uint8Array([0xde, 0xad]),
+          { count: 1 },
+        ],
+      ],
+      rowCount: 1,
+      hasMore: false,
+      elapsedMs: 1,
+      sql: "SELECT 1",
+      offset: 0,
+    };
+
+    expect(resultToTsv(typedResult)).toBe(
+      'created_at\tbytes\tmetadata\n2026-09-08T03:04:05.678Z\t0xdead\t"{""count"":1}"\n',
     );
   });
 
