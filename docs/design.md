@@ -38,9 +38,13 @@ login-pathはdatabaseを保持できないため、MySQL接続直後の既定dat
 
 接続切り替えでは先に新しいreserved sessionを確立し、成功してから旧sessionを閉じる。失敗時は旧sessionとSQL draftを残すことで、接続選択の失敗が作業内容の消失につながらないようにする。再接続も同じ経路を使い、login-pathやservice fileを再解決するため、更新された資格情報をprocess再起動なしで反映できる。
 
+切り替えを `Esc` で中止したときは、モードだけでなく選択位置とフィルタも戻す。切り替え画面は自身の選択とフィルタで一覧を表示するため、それらを退避せずに戻ると、絞り込んだtable treeの途中から先頭へ飛ばされる。中止が作業位置を失う操作になるなら、確認のために一覧を覗くこともできない。
+
 SQLを直接書く利用を主導線として、catalogでschemaを選択した後はtable一覧を取得せずquery modeへ移動する。table閲覧は削除せず、catalogで `l` / 右矢印を押したときだけ一覧を取得する補助導線として残す。
 
 query modeはSQLを書きながら直前の結果を参照できるよう、左editor・右resultのworkbenchにした。通常のEnterは改行に使い、実行はmacOSでterminalへ伝達できる `Cmd+Enter` に分離する。文字入力・paste・cursor移動は操作actionとしてreducerへ渡すため、複数文字が1チャンクで届いても欠落しない。historyも左下へ残し、Tabでfocusを切り替える。
+
+モード固有のキーは、そのモードの分岐の中だけでdispatchする。`e` を接続の有無だけで判定していたときは、接続一覧（`Ctrl-X` の切り替え画面を含む。接続は保持されたままなので条件を満たす）でも押せてしまい、接続を選ぶ画面が勝手にeditorへ切り替わっていた。同時に、query paneが持つ `e`（editorへfocusを戻す）が手前の判定に食われて到達しなくなっていた。
 
 長いSQLは `Ctrl-G` で外部editorへ渡す。Codex CLIと同様に `VISUAL` を `EDITOR` より優先し、shell形式でcommandを分割するため `code --wait` のような引数も利用できる。SQLだけを一時 `.sql` ファイルへ保存し、子processには端末の標準入出力を継承する。端末の受け渡しはInkの `suspendTerminal` に委ねる。入力を止めるだけでは足りず、その間もrender loopは動いていてmessageを消すtimerが発火するとeditorの画面へframeを描いてしまうためである。`suspendTerminal` はframeを消し、suspend中のrenderを捨て、raw mode・bracketed paste・kitty protocolを戻して全画面を再描画する。一時directoryは成功・失敗のどちらでも削除する。
 

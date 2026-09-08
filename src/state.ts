@@ -43,7 +43,15 @@ export interface AppState {
   queryDraft: string;
   queryCursor: number;
   queryFocus: QueryFocus;
-  connectionReturnMode?: Exclude<Mode, "connections" | "help">;
+  /**
+   * Where Ctrl-X was pressed. The switcher overwrites selectedIndex and filter
+   * for the connection list, so cancelling needs the previous ones to restore.
+   */
+  connectionReturn?: {
+    mode: Exclude<Mode, "connections" | "help">;
+    selectedIndex: number;
+    filter: string;
+  };
   resultSource?:
     { kind: "table"; schema: string; table: string } | { kind: "query" };
 }
@@ -198,7 +206,7 @@ export function reducer(state: AppState, action: Action): AppState {
         queryFocus: "editor",
         mode: "catalog",
         previousMode: "connections",
-        connectionReturnMode: undefined,
+        connectionReturn: undefined,
         selectedIndex: 0,
         filter: "",
         running: false,
@@ -221,7 +229,11 @@ export function reducer(state: AppState, action: Action): AppState {
         ? {
             ...state,
             mode: "connections",
-            connectionReturnMode: state.mode,
+            connectionReturn: {
+              mode: state.mode,
+              selectedIndex: state.selectedIndex,
+              filter: state.filter,
+            },
             selectedIndex: Math.max(
               0,
               state.connections.findIndex(
@@ -237,13 +249,15 @@ export function reducer(state: AppState, action: Action): AppState {
           }
         : state;
     case "cancelConnectionSwitcher":
-      return state.connectionReturnMode
+      return state.connectionReturn
         ? {
             ...state,
-            mode: state.connectionReturnMode,
-            connectionReturnMode: undefined,
-            selectedIndex: 0,
-            filter: "",
+            mode: state.connectionReturn.mode,
+            // Cancelling has to undo the switcher, filter and cursor included:
+            // returning to a collapsed tree at the first row is not a cancel.
+            selectedIndex: state.connectionReturn.selectedIndex,
+            filter: state.connectionReturn.filter,
+            connectionReturn: undefined,
             filterEditing: false,
             error: undefined,
           }
@@ -254,7 +268,7 @@ export function reducer(state: AppState, action: Action): AppState {
         current: undefined,
         mode: "connections",
         previousMode: undefined,
-        connectionReturnMode: undefined,
+        connectionReturn: undefined,
         selectedIndex: 0,
         filter: "",
         schemas: [],
