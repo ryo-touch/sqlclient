@@ -192,3 +192,26 @@ export function statusHintLine(
   return prefix + renderStatusHints(statusHints(mode, queryFocus), columns);
 }
 
+/**
+ * The status line while something is in flight. `message` names the operation
+ * ("Loading tables…"), which the running row used to swallow: it was rendered
+ * ahead of the message, so schemas, tables, schema selection and completion
+ * loads were indistinguishable. Dropped again when it does not fit, because
+ * the elapsed time and the way to cancel matter more than the name.
+ */
+export function statusRunningLine(
+  seconds: number,
+  message: string | undefined,
+  terminalColumns: number,
+): string {
+  const columns = Math.max(1, terminalColumns - HORIZONTAL_PADDING);
+  // The trailing ellipsis reads as "in progress" on its own, which is what the
+  // elapsed time now says: "Loading tables… 0.4s" would say it twice.
+  const label = message?.replace(/…+$/u, "").trimEnd();
+  const elapsed = `${seconds.toFixed(1)}s · Ctrl-C cancel`;
+  if (label !== undefined && label !== "") {
+    const composed = `${label} ${elapsed}`;
+    if (Bun.stringWidth(composed) <= columns) return composed;
+  }
+  return `Running ${elapsed}`;
+}

@@ -4,6 +4,7 @@ import {
   fitStatusHints,
   statusHintLine,
   statusHints,
+  statusRunningLine,
 } from "../src/core/status-hints.ts";
 import type { Mode, QueryFocus } from "../src/types.ts";
 
@@ -140,3 +141,45 @@ describe("status bar hints", () => {
   });
 });
 
+describe("status bar running row", () => {
+  test("names the operation in flight beside the elapsed time", () => {
+    expect(statusRunningLine(0.4, "Loading tables…", 100)).toBe(
+      "Loading tables 0.4s · Ctrl-C cancel",
+    );
+    expect(statusRunningLine(12.34, "Running query…", 100)).toBe(
+      "Running query 12.3s · Ctrl-C cancel",
+    );
+  });
+
+  test("falls back to Running without a message", () => {
+    expect(statusRunningLine(1, undefined, 100)).toBe(
+      "Running 1.0s · Ctrl-C cancel",
+    );
+    expect(statusRunningLine(1, "", 100)).toBe("Running 1.0s · Ctrl-C cancel");
+  });
+
+  test("drops the message before it overflows a narrow terminal", () => {
+    const narrow = statusRunningLine(0, "Loading completions…", 40);
+    expect(narrow).toBe("Running 0.0s · Ctrl-C cancel");
+    for (const message of [
+      undefined,
+      "Connecting…",
+      "Loading schemas…",
+      "Loading tables…",
+      "Selecting schema…",
+      "Loading completions…",
+      "Running query…",
+      "Running table query…",
+    ]) {
+      for (let terminal = 40; terminal <= 200; terminal += 1) {
+        const line = statusRunningLine(9.9, message, terminal);
+        expect({
+          message,
+          terminal,
+          line,
+          fits: Bun.stringWidth(line) <= terminal - 2,
+        }).toMatchObject({ fits: true });
+      }
+    }
+  });
+});
