@@ -31,8 +31,17 @@ LEFT JOIN pg_catalog.pg_class AS classes
   AND classes.relname = tables.table_name
 WHERE tables.table_schema = $1
 ORDER BY tables.table_name`,
+  listColumns: () => `
+SELECT
+  table_schema AS schema_name,
+  table_name,
+  column_name
+FROM information_schema.columns
+WHERE table_schema = $1
+ORDER BY table_name, ordinal_position`,
   selectSchema: (schema) => `SET search_path TO ${quotePostgresIdent(schema)}`,
   selectAll: (schema, table, limit, offset) =>
     `SELECT * FROM ${quotePostgresIdent(schema)}.${quotePostgresIdent(table)} LIMIT ${limit} OFFSET ${offset}`,
   tableParameters: (schema) => [schema],
+  columnParameters: (schema) => [schema],
 };

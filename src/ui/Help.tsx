@@ -10,6 +10,7 @@ const bindings = [
   ["e", "open the in-app SQL editor"],
   ["Cmd+Enter", "execute the SQL draft"],
   ["Ctrl-G", "edit the SQL draft in $VISUAL or $EDITOR"],
+  ["Ctrl-Space", "complete a table or column name"],
   ["r", "rerun the most recent or selected query"],
   ["n / p", "next or previous table page"],
   ["y", "copy selected cell or table name"],
