@@ -45,7 +45,10 @@ MySQL / PostgreSQL のread-onlyアカウントへ接続し、スキーマとテ�
 - カタログ閲覧: スキーマ → テーブル
 - テーブルのデータ閲覧（自動生成の SELECT、ページング）
 - 任意 SQL の実行（Ink 内の SQL editor と result を左右に同時表示する）
-- 結果グリッドの表示、横スクロール、セル値のコピー
+- 結果グリッドの表示、横スクロール、セル値のコピー、TSV への書き出し
+- SQL draft の外部editorでの編集
+- 選択schemaのtable名・column名による識別子の補完
+- session を維持したままの接続切り替えと再接続
 - クエリ履歴
 
 対象外
@@ -54,8 +57,8 @@ MySQL / PostgreSQL のread-onlyアカウントへ接続し、スキーマとテ�
 - 接続情報の新規登録・編集（既存の標準ストアを読むだけ）
 - SQLite、その他の RDBMS
 - SSH トンネル
-- IDE 相当の補完・診断・formatting
-- 結果の CSV / JSON エクスポート（v2 以降で検討）
+- 診断・formatting、および文脈を解釈する IDE 相当の補完
+- 結果の CSV / JSON エクスポート（書き出しは TSV のみ）
 
 ## ディレクトリ構成
 
@@ -63,15 +66,21 @@ MySQL / PostgreSQL のread-onlyアカウントへ接続し、スキーマとテ�
 sqlclient/
   src/
     index.tsx            エントリポイント。render(<App />)
-    app.tsx              モード切り替えとキーバインド
+    app.tsx              画面の組み立てと副作用の配線
     state.ts             reducer と Action 型
     types.ts             型定義
+    hooks/
+      use-app-actions.ts 接続・カタログ・クエリ・書き出しの操作
+      use-app-input.ts   モードごとのキーバインド
     core/
       credentials.ts     login-path / .pgpass / .pg_service.conf の解決
       connection.ts      Bun.SQL のラップ。接続、timeout、cancelを扱う
-      catalog.ts         スキーマ・テーブルの取得
+      catalog.ts         スキーマ・テーブル・カラムの取得
       query.ts           クエリ実行、ページング、結果の正規化
       query-editor.ts    複数行編集と cursor 操作の純粋関数
+      external-editor.ts $VISUAL / $EDITOR の解決と一時 .sql ファイルの受け渡し
+      export.ts          resultのTSV書き出し
+      status-hints.ts    モードごとのキー一覧と端末幅への収め方
       history.ts         クエリ履歴の永続化
       highlight.ts       sql-highlight のラップと方言補正
       clipboard.ts       pbcopy
@@ -92,10 +101,20 @@ sqlclient/
       exec.ts            Bun.spawn の薄いラッパ
       format.ts          列幅調整、値の表示整形
   test/
+    catalog.test.ts
+    clipboard.test.ts
+    connection.test.ts
     credentials.test.ts
     dialect.test.ts
+    export.test.ts
+    external-editor.test.ts
+    format.test.ts
     highlight.test.ts
+    history.test.ts
+    query-editor.test.ts
     query.test.ts
+    state.test.ts
+    status-hints.test.ts
     fixtures/
   README.md
   package.json
@@ -339,6 +358,7 @@ export interface Dialect {
 - `Ctrl-Space`: query editor のtable名・column名を補完する
 - `Ctrl-X`: 現在のsessionを維持したまま接続一覧を開く。新しい接続の成功後に旧sessionを閉じる
 - `Ctrl-R`: 現在の接続設定を再解決して再接続する
+- `s`: catalogでsystem schemaの表示を切り替える
 - `r`: 直近のクエリを再実行
 - `n` / `p`: 次ページ / 前ページ
 - `y`: 選択中のセル値（catalog ではテーブル名）を pbcopy でコピー
@@ -349,7 +369,7 @@ export interface Dialect {
 
 ### StatusBar
 
-- 通常時: 現在モードで使えるキーの一覧
+- 通常時: 現在モードで使えるキーの一覧。モードごとに重要な順の一覧を 1 本だけ持ち、端末幅に応じて 表記の短縮 → 末尾の省略 の順で収める。**狭い端末で出るキーは、広い端末で出るキーの先頭からの部分列でなければならない**
 - 実行中: 経過秒数を表示し、`Ctrl-C` で中断できることを示す
 - 実行後: 行数と所要時間を 3 秒表示して元に戻す
 - エラー時: サーバのエラーメッセージ先頭行を赤で表示する

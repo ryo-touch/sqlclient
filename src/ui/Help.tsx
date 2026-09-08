@@ -13,6 +13,7 @@ const bindings = [
   ["Ctrl-Space", "complete a table or column name"],
   ["Ctrl-X", "switch to another connection"],
   ["Ctrl-R", "reconnect the active connection"],
+  ["s", "toggle system schemas in the catalog"],
   ["r", "rerun the most recent or selected query"],
   ["n / p", "next or previous table page"],
   ["y", "copy selected cell or table name"],
