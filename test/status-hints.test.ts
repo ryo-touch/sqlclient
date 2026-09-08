@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   fitStatusHints,
   renderStatusHints,
+  statusHintLine,
   statusHints,
 } from "../src/core/status-hints.ts";
 import type { Mode, QueryFocus } from "../src/types.ts";
@@ -45,11 +46,35 @@ describe("status bar hints", () => {
     }
   });
 
-  test("every mode fits an 80 column terminal", () => {
+  // statusHintLine, not renderStatusHints: the query panes spend 16 columns on
+  // the "focus: result · " prefix, and testing without it hid a real overflow.
+  test("the whole line fits the terminal from 40 columns up", () => {
     for (const { mode, focus } of SURFACES) {
-      const line = renderStatusHints(statusHints(mode, focus), 78);
-      expect(Bun.stringWidth(line)).toBeLessThanOrEqual(78);
-      expect(line.length).toBeGreaterThan(0);
+      for (let terminal = 40; terminal <= 200; terminal += 1) {
+        const line = statusHintLine(mode, focus, terminal);
+        expect(Bun.stringWidth(line)).toBeLessThanOrEqual(terminal - 2);
+      }
+    }
+  });
+
+  test("the way out of the mode survives an 80 column terminal", () => {
+    // Either wording of the exit hint counts; which one shows depends on width.
+    const exits: Record<string, string[]> = {
+      "connections/editor": ["q cancel/quit", "q quit"],
+      "catalog/editor": ["q back"],
+      "result/editor": ["q catalog", "q back"],
+      "query/editor": ["Esc back"],
+      "query/result": ["Esc back"],
+      "query/history": ["Esc back"],
+      "help/editor": ["q/Esc close help"],
+    };
+    for (const { mode, focus } of SURFACES) {
+      const line = statusHintLine(mode, focus, 80);
+      expect({
+        surface: `${mode}/${focus}`,
+        line,
+        hasExit: exits[`${mode}/${focus}`]!.some((exit) => line.includes(exit)),
+      }).toMatchObject({ hasExit: true });
     }
   });
 
@@ -72,10 +97,12 @@ describe("status bar hints", () => {
     expect(editor).not.toContain("w TSV");
   });
 
-  test("result hints keep the editor and rerun keys at every width", () => {
-    const wide = renderStatusHints(statusHints("result", "editor"), 200);
-    expect(wide).toContain("e SQL editor");
-    expect(wide).toContain("r rerun");
-    expect(wide).toContain("Tab query");
+  test("result hints keep the editor and rerun keys once they fit", () => {
+    for (const columns of [80, 120, 200]) {
+      const line = statusHintLine("result", "editor", columns);
+      expect(line).toContain("e SQL");
+      expect(line).toContain("r rerun");
+      expect(line).toContain("Tab query");
+    }
   });
 });

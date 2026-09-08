@@ -5,6 +5,8 @@ export interface KeyHint {
   label: string;
   /** Shorter wording used once the full labels no longer fit. */
   short?: string;
+  /** Shorter key spelling for the same point, e.g. Tab/Shift+Tab → Tab. */
+  shortKeys?: string;
 }
 
 // One ordered list per mode, most important first, because narrow terminals
@@ -54,10 +56,12 @@ const RESULT: readonly KeyHint[] = [
 const QUERY_EDITOR: readonly KeyHint[] = [
   { keys: "type", label: "SQL" },
   { keys: "Cmd+Enter", label: "run" },
+  // Ahead of the optional keys: at 80 columns the prefix and the long
+  // Ctrl- names leave room for four hints, and one of them has to be the exit.
+  { keys: "Esc", label: "back" },
   { keys: "Ctrl-Space", label: "complete" },
   { keys: "Ctrl-G", label: "external editor", short: "external" },
   { keys: "Tab", label: "panes" },
-  { keys: "Esc", label: "back" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
 ];
@@ -67,7 +71,7 @@ const QUERY_RESULT: readonly KeyHint[] = [
   { keys: "h/l", label: "columns", short: "cols" },
   { keys: "y", label: "copy" },
   { keys: "w", label: "TSV" },
-  { keys: "Tab/Shift+Tab", label: "panes", short: "panes" },
+  { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
   { keys: "e", label: "editor" },
   { keys: "Esc", label: "back" },
   { keys: "Ctrl-X", label: "switch" },
@@ -78,7 +82,7 @@ const QUERY_HISTORY: readonly KeyHint[] = [
   { keys: "j/k", label: "move" },
   { keys: "Enter", label: "load" },
   { keys: "r", label: "run" },
-  { keys: "Tab/Shift+Tab", label: "panes", short: "panes" },
+  { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
   { keys: "Esc", label: "back" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
@@ -118,9 +122,10 @@ export interface FittedHints {
 
 function join(fitted: FittedHints): string {
   return fitted.hints
-    .map(
-      (hint) =>
-        `${hint.keys} ${fitted.short ? (hint.short ?? hint.label) : hint.label}`,
+    .map((hint) =>
+      fitted.short
+        ? `${hint.shortKeys ?? hint.keys} ${hint.short ?? hint.label}`
+        : `${hint.keys} ${hint.label}`,
     )
     .join(fitted.short ? " " : " · ");
 }
@@ -151,4 +156,29 @@ export function renderStatusHints(
   columns: number,
 ): string {
   return join(fitStatusHints(hints, columns));
+}
+
+// App renders the status bar inside a Box with paddingX={1}.
+const HORIZONTAL_PADDING = 2;
+
+function focusPrefix(mode: Mode, queryFocus: QueryFocus): string {
+  return mode === "query" ? `focus: ${queryFocus} · ` : "";
+}
+
+/**
+ * The whole status line for a terminal of `terminalColumns`, prefix included.
+ * The prefix has to be inside the budget: leaving it to the caller is how the
+ * hints came to overflow the query panes by its 16 columns.
+ */
+export function statusHintLine(
+  mode: Mode,
+  queryFocus: QueryFocus,
+  terminalColumns: number,
+): string {
+  const prefix = focusPrefix(mode, queryFocus);
+  const columns = Math.max(
+    1,
+    terminalColumns - HORIZONTAL_PADDING - Bun.stringWidth(prefix),
+  );
+  return prefix + renderStatusHints(statusHints(mode, queryFocus), columns);
 }

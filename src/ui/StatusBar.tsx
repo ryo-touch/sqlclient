@@ -1,6 +1,6 @@
 import { Text, useStdout } from "ink";
 
-import { renderStatusHints, statusHints } from "../core/status-hints.ts";
+import { statusHintLine } from "../core/status-hints.ts";
 import type { Mode, QueryError, QueryFocus } from "../types.ts";
 
 interface StatusBarProps {
@@ -11,9 +11,6 @@ interface StatusBarProps {
   message?: string;
   error?: QueryError;
 }
-
-// App renders the status bar inside a Box with paddingX={1}.
-const HORIZONTAL_PADDING = 2;
 
 export function StatusBar({
   mode,
@@ -33,15 +30,9 @@ export function StatusBar({
   }
   if (error) return <Text color="red">{error.message.split(/\r?\n/u)[0]}</Text>;
   if (message) return <Text color="green">{message}</Text>;
-  const prefix = mode === "query" ? `focus: ${queryFocus} · ` : "";
-  const columns = Math.max(
-    1,
-    (stdout.columns ?? 80) - HORIZONTAL_PADDING - prefix.length,
-  );
   return (
     <Text dimColor>
-      {prefix}
-      {renderStatusHints(statusHints(mode, queryFocus), columns)}
+      {statusHintLine(mode, queryFocus, stdout.columns ?? 80)}
     </Text>
   );
 }
