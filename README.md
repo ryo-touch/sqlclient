@@ -93,6 +93,7 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 | `Ctrl-Space`    | table名・column名を補完                    |
 | `Ctrl-X`        | 接続先の選択画面を開く                     |
 | `Ctrl-R`        | 現在の接続先へ再接続                       |
+| `s`             | catalogのsystem schema表示を切り替える     |
 | `r`             | 直近または選択中のクエリを再実行           |
 | `n` / `p`       | table結果の次 / 前ページ                   |
 | `y`             | 選択セルまたはtable名を `pbcopy` へコピー  |
