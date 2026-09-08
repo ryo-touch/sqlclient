@@ -48,13 +48,40 @@ function tableType(value: unknown): TableRef["type"] {
   return "other";
 }
 
+export class CatalogCancelledError extends Error {
+  constructor() {
+    super("Query cancelled");
+  }
+}
+
+/**
+ * cancelActive() raises a session flag that exactly one execution has to take
+ * back down. executeTimed does that for user queries; a catalog read has to do
+ * the same, or a Ctrl-C here leaves the flag standing and the next successful
+ * user query is reported as cancelled.
+ */
+async function runCatalog<T>(
+  session: DatabaseSession,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    const value = await run();
+    if (session.takeCancellation()) throw new CatalogCancelledError();
+    return value;
+  } catch (error) {
+    if (error instanceof CatalogCancelledError) throw error;
+    if (session.takeCancellation()) throw new CatalogCancelledError();
+    throw error;
+  }
+}
+
 export async function listSchemas(
   session: DatabaseSession,
   dialect: Dialect,
   includeSystem = false,
 ): Promise<SchemaRef[]> {
-  const result: unknown = await session.executeCatalog(
-    dialect.listSchemas(includeSystem),
+  const result: unknown = await runCatalog(session, () =>
+    session.executeCatalog(dialect.listSchemas(includeSystem)),
   );
   return records(result)
     .map((row) => text(field(row, "schema_name")))
@@ -67,9 +94,11 @@ export async function listTables(
   dialect: Dialect,
   schema: string,
 ): Promise<TableRef[]> {
-  const result: unknown = await session.executeCatalog(
-    dialect.listTables(schema),
-    dialect.tableParameters(schema),
+  const result: unknown = await runCatalog(session, () =>
+    session.executeCatalog(
+      dialect.listTables(schema),
+      dialect.tableParameters(schema),
+    ),
   );
   return records(result).flatMap((row) => {
     const resultSchema = text(field(row, "schema_name"));
@@ -92,9 +121,11 @@ export async function listColumns(
   dialect: Dialect,
   schema: string,
 ): Promise<ColumnRef[]> {
-  const result: unknown = await session.executeCatalog(
-    dialect.listColumns(schema),
-    dialect.columnParameters(schema),
+  const result: unknown = await runCatalog(session, () =>
+    session.executeCatalog(
+      dialect.listColumns(schema),
+      dialect.columnParameters(schema),
+    ),
   );
   return records(result).flatMap((row) => {
     const resultSchema = text(field(row, "schema_name"));
@@ -111,5 +142,7 @@ export async function selectSchema(
   dialect: Dialect,
   schema: string,
 ): Promise<void> {
-  await session.executeCatalog(dialect.selectSchema(schema));
+  await runCatalog(session, () =>
+    session.executeCatalog(dialect.selectSchema(schema)),
+  );
 }
