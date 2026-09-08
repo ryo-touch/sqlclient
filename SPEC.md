@@ -221,6 +221,7 @@ export interface HistoryEntry {
 - IPv6 literalは角括弧を除いたhostとして渡す
 - 選択中はpoolから1本をreserveし、schema選択、クエリ、backend IDを同じsessionへ結び付ける
 - MySQLは `max_execution_time`、PostgreSQLは `statement_timeout` を30秒へ設定する
+- DB由来のエラーは、その問い合わせを実行したsessionの sanitizer（`toQueryError`）を通して表示する。解決済みpasswordを literal として除去できるのはそのsessionだけで、接続を渡さない sanitizer はURL形式と `password=` 形式しか落とせない
 - アプリはSQL文字列やgrantを検査せず、read-only確認済みという状態や表示を持たない
 - 書き込み防止には、対象schema/tableへの参照権限だけを持つ専用DBアカウントを使う
 

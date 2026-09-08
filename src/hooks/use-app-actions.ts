@@ -133,17 +133,27 @@ export function useAppActions({
         );
         dispatch({ type: "schemasLoaded", schemas, showSystem: false });
       } catch (error) {
-        dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
+        dispatch({ type: "showError", error: connected.toQueryError(error) });
       }
     },
     [dispatch, session, state.current, visibleConnections],
   );
 
+  // Every catalog error goes through the session that produced it: only its
+  // bound toQueryError knows the resolved password and can redact it as a
+  // literal. The bare sanitizer catches URL and password= shapes alone, and a
+  // server message can quote the value in neither of them.
   const showCatalogError = useCallback(
     (error: unknown) => {
-      dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
+      const connected = session.current;
+      dispatch({
+        type: "showError",
+        error: connected
+          ? connected.toQueryError(error)
+          : sanitizeDatabaseError(error),
+      });
     },
-    [dispatch],
+    [dispatch, session],
   );
 
   const rememberQuery = useCallback(
@@ -333,8 +343,6 @@ export function useAppActions({
         ];
         completionCache.current.set(cacheKey, candidates);
       } catch (error) {
-        // toQueryError knows the resolved password and redacts it literally;
-        // the bare sanitizer only catches URL and password= shapes.
         dispatch({ type: "showError", error: connected.toQueryError(error) });
         return;
       }
