@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, type Dispatch } from "react";
 import type { useApp } from "ink";
 
 import {
+  completionCacheKey,
   listColumns,
   listSchemas,
   listTables,
@@ -11,7 +12,6 @@ import { copyValue } from "../core/clipboard.ts";
 import {
   connectDatabase,
   DatabaseConnectionError,
-  sanitizeDatabaseError,
   type DatabaseSession,
 } from "../core/connection.ts";
 import { resolveConnection } from "../core/credentials.ts";
@@ -132,15 +132,21 @@ export function useAppActions({
         );
         dispatch({ type: "schemasLoaded", schemas, showSystem: false });
       } catch (error) {
-        dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
+        dispatch({ type: "showError", error: connected.toQueryError(error) });
       }
     },
     [dispatch, session, state.current, visibleConnections],
   );
 
+  // Every catalog error goes through the session that produced it: only its
+  // bound toQueryError knows the resolved password and can redact it as a
+  // literal.
   const showCatalogError = useCallback(
-    (error: unknown) => {
-      dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
+    (error: unknown, connected: DatabaseSession) => {
+      dispatch({
+        type: "showError",
+        error: connected.toQueryError(error),
+      });
     },
     [dispatch],
   );
@@ -312,7 +318,7 @@ export function useAppActions({
     const connected = session.current;
     const schema = state.selectedSchema;
     if (!connected || !schema) return;
-    const cacheKey = `${connected.info.engine}:${connected.info.name}:${schema}`;
+    const cacheKey = completionCacheKey(connected.info, schema);
     let candidates = completionCache.current.get(cacheKey);
     if (!candidates) {
       // The first completion runs a real query on the reserved session, so it has
@@ -332,8 +338,6 @@ export function useAppActions({
         ];
         completionCache.current.set(cacheKey, candidates);
       } catch (error) {
-        // toQueryError knows the resolved password and redacts it literally;
-        // the bare sanitizer only catches URL and password= shapes.
         dispatch({ type: "showError", error: connected.toQueryError(error) });
         return;
       }
@@ -359,7 +363,7 @@ export function useAppActions({
           await runTablePage(node.value.schema, node.value.table, 0);
         }
       } catch (error) {
-        showCatalogError(error);
+        showCatalogError(error, connected);
       }
     },
     [dispatch, runTablePage, session, showCatalogError, state.result?.sql],
@@ -376,7 +380,7 @@ export function useAppActions({
         const tables = await listTables(connected, dialect, node.value.schema);
         dispatch({ type: "tablesLoaded", schema: node.value.schema, tables });
       } catch (error) {
-        showCatalogError(error);
+        showCatalogError(error, connected);
       }
     },
     [dispatch, session, showCatalogError, state.expandedSchema],
@@ -395,7 +399,7 @@ export function useAppActions({
         );
         dispatch({ type: "schemasLoaded", schemas, showSystem });
       } catch (error) {
-        dispatch({ type: "showError", error: sanitizeDatabaseError(error) });
+        dispatch({ type: "showError", error: connected.toQueryError(error) });
       }
     },
     [dispatch, session],

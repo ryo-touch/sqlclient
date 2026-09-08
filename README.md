@@ -87,7 +87,7 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 | `Enter`         | 接続・schemaを選んでqueryへ移動・table表示 |
 | `Tab`           | catalog → result → queryを巡回             |
 | `Shift+Tab`     | query内のfocusを逆順に切り替える           |
-| `e`             | 左側のSQL editorを開く                     |
+| `e`             | catalog / resultで左側のSQL editorを開く   |
 | `Cmd+Enter`     | editorのSQLを実行                          |
 | `Ctrl-G`        | editorのSQLを外部エディタで編集            |
 | `Ctrl-Space`    | table名・column名を補完                    |
@@ -107,13 +107,13 @@ tableを開いた結果では、Headerのbreadcrumb末尾にtable名も表示し
 
 resultで `w` を押すと、保持中の列名と全行をカレントディレクトリの `sqlclient-result-YYYYMMDD-HHmmss.tsv` へ書き出します。既存ファイルは上書きせず、同名の場合は連番を付けます。`NULL` は空欄、`Date` はミリ秒とタイムゾーンを保つISO 8601、`Uint8Array` は16進数、objectはJSONとして書き出します。タブ・改行・ダブルクォートを含む値はダブルクォートで囲みます。
 
-接続中に `Ctrl-X` を押すと接続一覧へ移動し、現在の接続は `active` と表示されます。別の接続が成功してから元のsessionを閉じるため、接続失敗時は元の接続とSQL draftを維持します。`Esc` で切り替えを中止できます。`Ctrl-R` は現在の接続設定を再解決してsessionを作り直します。
+接続中に `Ctrl-X` を押すと接続一覧へ移動し、現在の接続は `active` と表示されます。別の接続が成功してから元のsessionを閉じるため、接続失敗時は元の接続とSQL draftを維持します。`Esc` で切り替えを中止すると、元の画面の選択位置とフィルタまで戻ります。`Ctrl-R` は現在の接続設定を再解決してsessionを作り直します。
 
 ### SQL editorとresult
 
 connectionsで接続先を選んで `Enter` を押すとcatalogへ移動します。schemaを選んで `Enter` を押すと、そのschemaを接続の既定値に設定してquery画面へ進みます。tableを確認したい場合だけ、catalogでschemaにカーソルを合わせて `l` または右矢印を押すとtable一覧を読み込みます。`h` または左矢印で折りたためます。
 
-query画面の左側で複数行SQLを編集でき、右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → history、`Shift+Tab` で逆順にfocusを切り替えます。
+query画面の左側で複数行SQLを編集でき、右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → history、`Shift+Tab` で逆順にfocusを切り替えます。result paneとhistory paneでは `e` でeditorへ戻れます。
 
 editorにfocusして `Ctrl-G` を押すと、現在のSQLを一時的な `.sql` ファイルへ書き出し、外部エディタで編集できます。`VISUAL`、次に `EDITOR` の順で環境変数を参照します。`code --wait` のように、エディタ名と引数をまとめて設定できます。保存してエディタを閉じると編集結果がSQL draftへ戻り、一時ファイルは削除されます。
 

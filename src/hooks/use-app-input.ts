@@ -172,14 +172,6 @@ export function useAppInput({
       return;
     }
 
-    if (!state.filterEditing && input === "e" && state.current) {
-      dispatch({
-        type: "openQueryEditor",
-        initialSql: state.result?.sql ?? "",
-      });
-      return;
-    }
-
     if (
       !state.filterEditing &&
       input === "y" &&
@@ -296,6 +288,11 @@ export function useAppInput({
         state.result
       )
         void runUserSql(state.result.sql);
+      else if (input === "e")
+        dispatch({
+          type: "openQueryEditor",
+          initialSql: state.result?.sql ?? "",
+        });
       else if (key.tab) dispatch({ type: "setMode", mode: "query" });
       else if (input === "q" || key.escape)
         dispatch({ type: "setMode", mode: "catalog" });
@@ -427,6 +424,11 @@ export function useAppInput({
           selectedIndex: Math.max(0, schemaIndex),
         });
       } else if (input === "s") void reloadSchemas(!state.showSystemSchemas);
+      else if (input === "e")
+        dispatch({
+          type: "openQueryEditor",
+          initialSql: state.result?.sql ?? "",
+        });
       else if (key.return) {
         const node = catalogNodes[state.selectedIndex];
         if (node) void openCatalogNode(node);
@@ -488,7 +490,7 @@ export function useAppInput({
       } else if (selected) void connectSelected(selected);
     } else if (input === "q" || key.escape) {
       if (state.filter !== "") dispatch({ type: "clearFilter" });
-      else if (state.connectionReturnMode)
+      else if (state.connectionReturn)
         dispatch({ type: "cancelConnectionSwitcher" });
       else exit();
     }
