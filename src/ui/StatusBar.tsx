@@ -18,7 +18,7 @@ function keys(mode: Mode): string {
     case "catalog":
       return "j/k move · Enter schema→query/open table · h/l collapse/expand · s system · y copy · ? help · q back";
     case "result":
-      return "j/k rows · h/l columns · n/p page · y copy · e edit · r rerun · Tab query · ? help · q catalog";
+      return "j/k rows · h/l columns · n/p page · y copy · w TSV · e edit · r rerun · Tab query · ? help · q catalog";
     case "query":
       return "type SQL · Cmd+Enter run · Ctrl-G external editor · Tab editor/result/history · Esc back";
     case "help":
@@ -33,7 +33,7 @@ function compactKeys(mode: Mode): string {
     case "catalog":
       return "j/k move Enter query/open h/l tree s sys y copy ? help q back";
     case "result":
-      return "j/k rows h/l cols n/p page y copy e SQL r rerun Tab query q back";
+      return "j/k rows h/l cols n/p page y copy w TSV e SQL r rerun Tab query q back";
     case "query":
       return "type SQL Cmd+Enter run Ctrl-G editor Tab panes Esc back";
     case "help":
@@ -49,8 +49,8 @@ function queryPaneKeys(focus: QueryFocus, compact: boolean): string {
         : "type SQL · Cmd+Enter run · Ctrl-G external editor · Tab/Shift+Tab panes · Esc back";
     case "result":
       return compact
-        ? "j/k rows h/l cols y copy Tab/Shift+Tab panes e editor Esc back"
-        : "j/k rows · h/l columns · y copy · Tab/Shift+Tab panes · e editor · Esc back";
+        ? "j/k rows h/l cols y copy w TSV Tab panes e editor Esc back"
+        : "j/k rows · h/l columns · y copy · w TSV · Tab/Shift+Tab panes · e editor · Esc back";
     case "history":
       return compact
         ? "j/k move Enter load r run Tab/Shift+Tab panes Esc back"
