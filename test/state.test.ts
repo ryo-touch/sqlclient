@@ -113,18 +113,103 @@ describe("application reducer", () => {
     const picker = reducer(state, { type: "openConnectionSwitcher" });
     expect(picker).toMatchObject({
       mode: "connections",
-      connectionReturnMode: "query",
+      connectionReturn: { mode: "query" },
       current: { name: "primary" },
       queryDraft: "SELECT 1",
     });
     expect(reducer(picker, { type: "cancelConnectionSwitcher" })).toMatchObject(
       {
         mode: "query",
-        connectionReturnMode: undefined,
+        connectionReturn: undefined,
         current: { name: "primary" },
         queryDraft: "SELECT 1",
       },
     );
+  });
+
+  test("cancelling connection switching restores the selection and filter", () => {
+    const state = {
+      ...initialState,
+      current: {
+        name: "primary",
+        engine: "postgres" as const,
+        source: "pg_service" as const,
+        host: "localhost",
+        port: 5432,
+        user: "reader",
+      },
+      connections: [
+        {
+          name: "other",
+          engine: "postgres" as const,
+          source: "pg_service" as const,
+          available: true,
+        },
+        {
+          name: "primary",
+          engine: "postgres" as const,
+          source: "pg_service" as const,
+          available: true,
+        },
+      ],
+      mode: "catalog" as const,
+      selectedIndex: 4,
+      filter: "item",
+    };
+    const picker = reducer(state, { type: "openConnectionSwitcher" });
+    // The list opens on the active connection, not on the catalog row.
+    expect(picker).toMatchObject({
+      selectedIndex: 1,
+      filter: "",
+      connectionReturn: { mode: "catalog", selectedIndex: 4, filter: "item" },
+    });
+    expect(reducer(picker, { type: "cancelConnectionSwitcher" })).toMatchObject(
+      {
+        mode: "catalog",
+        selectedIndex: 4,
+        filter: "item",
+        filterEditing: false,
+        connectionReturn: undefined,
+      },
+    );
+  });
+
+  test("connecting from the switcher does not restore the old selection", () => {
+    const picker = reducer(
+      {
+        ...initialState,
+        current: {
+          name: "primary",
+          engine: "postgres" as const,
+          source: "pg_service" as const,
+          host: "localhost",
+          port: 5432,
+          user: "reader",
+        },
+        mode: "catalog" as const,
+        selectedIndex: 3,
+        filter: "item",
+      },
+      { type: "openConnectionSwitcher" },
+    );
+    expect(
+      reducer(picker, {
+        type: "connectionSucceeded",
+        connection: {
+          name: "secondary",
+          engine: "mysql",
+          source: "mylogin",
+          host: "localhost",
+          port: 3306,
+          user: "reader",
+        },
+      }),
+    ).toMatchObject({
+      mode: "catalog",
+      selectedIndex: 0,
+      filter: "",
+      connectionReturn: undefined,
+    });
   });
 
   test("preserves the draft when replacing an active connection", () => {
