@@ -127,6 +127,40 @@ describe("application reducer", () => {
     );
   });
 
+  test("keeps a switched schema selected when loading its tables fails", () => {
+    const loading = reducer(
+      {
+        ...initialState,
+        selectedSchema: "previous",
+        tables: [{ schema: "previous", table: "items", type: "table" }],
+        expandedSchema: "previous",
+      },
+      { type: "catalogLoading", message: "Loading tables…" },
+    );
+    const switched = reducer(loading, {
+      type: "schemaSelected",
+      schema: "next",
+      keepLoading: true,
+    });
+    expect(switched).toMatchObject({
+      selectedSchema: "next",
+      running: true,
+      message: "Loading tables…",
+    });
+    const failed = reducer(switched, {
+      type: "showError",
+      error: { message: "Query cancelled" },
+    });
+
+    expect(failed).toMatchObject({
+      selectedSchema: "next",
+      expandedSchema: undefined,
+      tables: [],
+      running: false,
+      error: { message: "Query cancelled" },
+    });
+  });
+
   test("cancelling connection switching restores the selection and filter", () => {
     const state = {
       ...initialState,

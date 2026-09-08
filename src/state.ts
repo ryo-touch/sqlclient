@@ -103,7 +103,7 @@ export type Action =
   | { type: "cancelConnectionSwitcher" }
   | { type: "catalogLoading"; message: string }
   | { type: "schemasLoaded"; schemas: SchemaRef[]; showSystem: boolean }
-  | { type: "schemaSelected"; schema: string }
+  | { type: "schemaSelected"; schema: string; keepLoading?: boolean }
   | { type: "tablesLoaded"; schema: string; tables: TableRef[] }
   | { type: "schemaCollapsed"; selectedIndex: number }
   | { type: "queryStarted"; message: string }
@@ -308,8 +308,8 @@ export function reducer(state: AppState, action: Action): AppState {
         tables: [],
         selectedSchema: action.schema,
         expandedSchema: undefined,
-        running: false,
-        message: undefined,
+        running: action.keepLoading ? state.running : false,
+        message: action.keepLoading ? state.message : undefined,
         lastUpdated: new Date(),
       };
     case "tablesLoaded":

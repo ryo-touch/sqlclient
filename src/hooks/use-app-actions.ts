@@ -377,6 +377,11 @@ export function useAppActions({
       dispatch({ type: "catalogLoading", message: "Loading tables…" });
       try {
         await selectSchema(connected, dialect, node.value.schema);
+        dispatch({
+          type: "schemaSelected",
+          schema: node.value.schema,
+          keepLoading: true,
+        });
         const tables = await listTables(connected, dialect, node.value.schema);
         dispatch({ type: "tablesLoaded", schema: node.value.schema, tables });
       } catch (error) {
