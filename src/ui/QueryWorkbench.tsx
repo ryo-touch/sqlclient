@@ -158,8 +158,12 @@ export function QueryWorkbench({
           minHeight={layout.editorLines + 2}
         >
           <Text bold color={focus === "editor" ? "cyan" : undefined}>
-            {focus === "editor" ? "▶ " : "  "}SQL · Cmd+Enter run · Ctrl-Space
-            complete
+            {/* Only the focused editor advertises its keys: Tab completes here
+                and moves between panes everywhere else, so the header would
+                contradict the status bar while another pane holds focus. */}
+            {focus === "editor"
+              ? "▶ SQL · Cmd+Enter run · Tab complete"
+              : "  SQL"}
           </Text>
           {editor.above > 0 ? (
             <Text dimColor>… {editor.above} lines above</Text>

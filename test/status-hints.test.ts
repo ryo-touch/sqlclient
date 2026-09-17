@@ -79,15 +79,17 @@ describe("status bar hints", () => {
   });
 
   test("reaching the other panes survives an 80 column terminal", () => {
-    // Entering query mode lands on the editor, so losing Tab there strands the
-    // user: the editor pane has no `? help` hint either.
+    // Entering query mode lands on the editor, so losing the pane key there
+    // strands the user: the editor pane has no `? help` hint either, and its
+    // pane key is Ctrl-O alone because Tab completes.
     for (const focus of ["editor", "result", "history"] as QueryFocus[]) {
       const line = statusHintLine("query", focus, 80);
-      expect({ focus, line, hasTab: line.includes("Tab panes") }).toMatchObject(
-        {
-          hasTab: true,
-        },
-      );
+      const paneHint = focus === "editor" ? "Ctrl-O panes" : "Tab panes";
+      expect({
+        focus,
+        line,
+        hasPaneKey: line.includes(paneHint),
+      }).toMatchObject({ hasPaneKey: true });
     }
   });
 
@@ -104,7 +106,7 @@ describe("status bar hints", () => {
     const editor = statusHintLine("query", "editor", 200);
     const result = statusHintLine("query", "result", 200);
     const history = statusHintLine("query", "history", 200);
-    expect(editor).toContain("Ctrl-Space complete");
+    expect(editor).toContain("Tab complete");
     expect(result).toContain("w TSV");
     expect(history).toContain("Enter load");
     expect(editor).not.toContain("w TSV");

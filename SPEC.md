@@ -294,11 +294,11 @@ export interface Dialect {
 - query mode は左に複数行 SQL editor、右に直近の result を同時表示する
 - 通常の `Enter` は改行、macOS の `Cmd+Enter` は現在の SQL を実行する
 - editorにfocus中の `Ctrl-G` は現在のSQLを一時 `.sql` ファイルへ書き出し、外部editorで編集する
-- editorにfocus中の `Ctrl-Space` は選択schemaのtable名・column名からcursor直前の識別子を補完する。metadataの初回取得は実行中のクエリとして扱い、その間は他の実行キーを受け付けず `Ctrl-C` で中断できる
+- editorにfocus中の `Tab` は選択schemaのtable名・column名からcursor直前の識別子を補完する。metadataの初回取得は実行中のクエリとして扱い、その間は他の実行キーを受け付けず `Ctrl-C` で中断できる
 - 外部editorは `VISUAL`、次に `EDITOR` を参照し、引用符を含む引数付きcommandを保持する
 - 外部editorの実行中はInkの入力とrenderの両方を止めて端末を渡し、終了後に画面を再描画して編集結果をdraftへ反映し、一時ファイルを削除する
 - 文字入力、複数行 paste、backspace / delete、上下左右・行頭・行末の cursor 移動を扱う
-- editor / result / history は `Tab` で focus を切り替える
+- editor / result / history は `Ctrl-O` で focus を切り替える。editor 以外では `Tab` も同じ移動をする
 - editor の操作は reducer action として適用し、複数文字が 1 チャンクで届いても入力を失わない
 - SQL は `sql-highlight` の segment を Ink の `<Text>` として描画し、cursor 位置だけ inverse にする
 
@@ -353,12 +353,12 @@ export interface Dialect {
 - `h` / `l`: catalogの折りたたみ／展開、resultの横スクロール
 - `g` / `G`: 先頭 / 末尾
 - `Enter`: connectionsでは接続してcatalogへ移動する。catalogではschemaを選択してqueryへ移動し、tableではresultを開く
-- `Tab`: catalog ⇄ result ⇄ query を巡回
-- `Shift+Tab`: query mode の editor / result / history を逆順に巡回
+- `Tab`: catalog ⇄ result ⇄ query を巡回。query mode の editor では巡回せず、table名・column名を補完する
+- `Ctrl-O`: `Tab` と同じ巡回を行う。query mode の editor から他の pane へ移る唯一のキー
+- 逆順の巡回は持たない。`Shift+Tab` は `Tab` と同じ前進として扱う。ただし query mode の editor では何も起こさない（補完は `Tab` 単独に限り、pane を出る旧習慣が draft の編集とmetadata取得に化けないようにする）
 - `e`: catalog / result では query mode の SQL editor を開き、query mode では editor へfocusを移す。connections と help では受け付けない
 - `Cmd+Enter`: editor の SQL を実行する
 - `Ctrl-G`: query editor の SQL を外部editorで編集する
-- `Ctrl-Space`: query editor のtable名・column名を補完する
 - `Ctrl-X`: 現在のsessionを維持したまま接続一覧を開く。新しい接続の成功後に旧sessionを閉じる。`Esc` で中止した場合は元のモードの選択位置とフィルタまで戻す
 - `Ctrl-R`: 現在の接続設定を再解決して再接続する
 - `s`: catalogでsystem schemaの表示を切り替える

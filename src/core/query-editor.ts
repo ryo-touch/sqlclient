@@ -31,9 +31,11 @@ export function queryWorkbenchLayout(
   };
 }
 
+// One direction only: the editor spends Tab on completion, so the pane keys
+// have to fit on `Ctrl-O` alone, and a three-pane ring reaches every pane
+// within two presses without a second key to remember.
 export function cycleQueryFocus(
   current: QueryFocus,
-  direction: "forward" | "backward",
   hasResult: boolean,
   hasHistory: boolean,
 ): QueryFocus {
@@ -43,11 +45,7 @@ export function cycleQueryFocus(
     ...(hasHistory ? (["history"] as const) : []),
   ];
   const currentIndex = Math.max(0, available.indexOf(current));
-  const delta = direction === "forward" ? 1 : -1;
-  return (
-    available[(currentIndex + delta + available.length) % available.length] ??
-    "editor"
-  );
+  return available[(currentIndex + 1) % available.length] ?? "editor";
 }
 
 export function selectionWindow(
