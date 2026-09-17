@@ -53,6 +53,12 @@ export function useAppInput({
   reloadSchemas,
 }: UseAppInputOptions) {
   useInput((input, key) => {
+    // `Ctrl-O` is the pane key that works everywhere, because the editor takes
+    // Tab for completion. Outside the editor the two are interchangeable so a
+    // single habit carries across modes. Shift is not read: the reverse ring is
+    // gone, and Shift+Tab therefore moves forward like Tab.
+    const nextPane = key.tab || (key.ctrl && input === "o");
+
     if (key.ctrl && input === "c") {
       if (state.running) {
         const connected = session.current;
@@ -105,24 +111,23 @@ export function useAppInput({
 
     if (state.mode === "query" && state.queryFocus === "editor") {
       if (key.eventType === "release") return;
-      if (key.ctrl && (input === " " || input === "`")) {
+      if (key.tab) {
         if (!state.running) void completeIdentifier();
+      } else if (key.ctrl && input === "o") {
+        dispatch({
+          type: "setQueryFocus",
+          focus: cycleQueryFocus(
+            state.queryFocus,
+            state.result !== undefined,
+            showQueryHistory,
+          ),
+        });
       } else if (key.ctrl && input === "g") {
         if (!state.running) void openExternalEditor();
       } else if (key.return && (key.super || key.meta)) {
         if (!state.running && state.queryDraft.trim() !== "") {
           void runUserSql(state.queryDraft);
         }
-      } else if (key.tab) {
-        dispatch({
-          type: "setQueryFocus",
-          focus: cycleQueryFocus(
-            state.queryFocus,
-            key.shift ? "backward" : "forward",
-            state.result !== undefined,
-            showQueryHistory,
-          ),
-        });
       } else if (key.escape) {
         dispatch({
           type: "setMode",
@@ -293,7 +298,7 @@ export function useAppInput({
           type: "openQueryEditor",
           initialSql: state.result?.sql ?? "",
         });
-      else if (key.tab) dispatch({ type: "setMode", mode: "query" });
+      else if (nextPane) dispatch({ type: "setMode", mode: "query" });
       else if (input === "q" || key.escape)
         dispatch({ type: "setMode", mode: "catalog" });
       return;
@@ -332,12 +337,11 @@ export function useAppInput({
         } else if (input === "r") {
           const selected = state.history[state.selectedIndex];
           if (selected) void runUserSql(selected.sql);
-        } else if (key.tab)
+        } else if (nextPane)
           dispatch({
             type: "setQueryFocus",
             focus: cycleQueryFocus(
               state.queryFocus,
-              key.shift ? "backward" : "forward",
               state.result !== undefined,
               showQueryHistory,
             ),
@@ -369,12 +373,11 @@ export function useAppInput({
           dispatch({ type: "moveResultColumn", delta: -1, columnCount });
         else if (input === "l")
           dispatch({ type: "moveResultColumn", delta: 1, columnCount });
-        else if (key.tab)
+        else if (nextPane)
           dispatch({
             type: "setQueryFocus",
             focus: cycleQueryFocus(
               state.queryFocus,
-              key.shift ? "backward" : "forward",
               state.result !== undefined,
               showQueryHistory,
             ),
@@ -397,7 +400,7 @@ export function useAppInput({
         else if (input !== "" && !key.ctrl && !key.meta)
           dispatch({ type: "appendFilter", text: input });
       } else if (input === "/") dispatch({ type: "beginFilter" });
-      else if (key.tab)
+      else if (nextPane)
         dispatch({
           type: "setMode",
           mode: state.result ? "result" : "query",

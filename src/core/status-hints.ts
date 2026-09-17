@@ -5,8 +5,6 @@ export interface KeyHint {
   label: string;
   /** Shorter wording used once the full labels no longer fit. */
   short?: string;
-  /** Shorter key spelling for the same point, e.g. Tab/Shift+Tab → Tab. */
-  shortKeys?: string;
 }
 
 // One ordered list per mode, most important first, because narrow terminals
@@ -61,12 +59,14 @@ const RESULT: readonly KeyHint[] = [
 const QUERY_EDITOR: readonly KeyHint[] = [
   { keys: "type", label: "SQL" },
   { keys: "Cmd+Enter", label: "run" },
-  // Leaving the pane and reaching the other panes both outrank the two Ctrl-
-  // keys here: 80 columns minus the focus prefix affords five hints, and the
-  // long "Ctrl-G external" is the one that does not make the cut.
+  // Leaving the pane and reaching the other panes both outrank Ctrl-X and
+  // Ctrl-R here: 80 columns minus the focus prefix affords five hints, and the
+  // long "Ctrl-G external" is the one that does not make the cut. `Ctrl-O` has
+  // to stay inside those five: Tab completes in this pane, so it is the only
+  // way on to the other panes.
   { keys: "Esc", label: "back" },
-  { keys: "Ctrl-Space", label: "complete" },
-  { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
+  { keys: "Tab", label: "complete" },
+  { keys: "Ctrl-O", label: "panes" },
   { keys: "Ctrl-G", label: "external editor", short: "external" },
   { keys: "Ctrl-X", label: "switch" },
   { keys: "Ctrl-R", label: "reconnect" },
@@ -77,7 +77,7 @@ const QUERY_RESULT: readonly KeyHint[] = [
   { keys: "h/l", label: "columns", short: "cols" },
   { keys: "y", label: "copy" },
   { keys: "w", label: "TSV" },
-  { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
+  { keys: "Tab", label: "panes" },
   { keys: "e", label: "editor" },
   { keys: "Esc", label: "back" },
   // Below the exit: at 80 columns the prefix leaves room for the keys above,
@@ -91,7 +91,7 @@ const QUERY_HISTORY: readonly KeyHint[] = [
   { keys: "j/k", label: "move" },
   { keys: "Enter", label: "load" },
   { keys: "r", label: "run" },
-  { keys: "Tab/Shift+Tab", label: "panes", shortKeys: "Tab" },
+  { keys: "Tab", label: "panes" },
   { keys: "Esc", label: "back" },
   { keys: "?", label: "help" },
   { keys: "Ctrl-X", label: "switch" },
@@ -134,7 +134,7 @@ function join(fitted: FittedHints): string {
   return fitted.hints
     .map((hint) =>
       fitted.short
-        ? `${hint.shortKeys ?? hint.keys} ${hint.short ?? hint.label}`
+        ? `${hint.keys} ${hint.short ?? hint.label}`
         : `${hint.keys} ${hint.label}`,
     )
     .join(fitted.short ? " " : " · ");

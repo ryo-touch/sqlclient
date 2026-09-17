@@ -37,17 +37,17 @@ describe("in-app query editor", () => {
     expect(selectionWindow(20, 19, 5)).toEqual({ start: 15, end: 20 });
   });
 
-  test("cycles available panes forward and backward", () => {
-    expect(cycleQueryFocus("editor", "forward", true, true)).toBe("result");
-    expect(cycleQueryFocus("editor", "backward", true, true)).toBe("history");
-    expect(cycleQueryFocus("result", "backward", true, true)).toBe("editor");
-    expect(cycleQueryFocus("history", "forward", true, true)).toBe("editor");
+  test("cycles the available panes in one direction", () => {
+    expect(cycleQueryFocus("editor", true, true)).toBe("result");
+    expect(cycleQueryFocus("result", true, true)).toBe("history");
+    expect(cycleQueryFocus("history", true, true)).toBe("editor");
   });
 
   test("skips panes that have no content", () => {
-    expect(cycleQueryFocus("editor", "forward", false, true)).toBe("history");
-    expect(cycleQueryFocus("editor", "backward", true, false)).toBe("result");
-    expect(cycleQueryFocus("editor", "forward", false, false)).toBe("editor");
+    expect(cycleQueryFocus("editor", false, true)).toBe("history");
+    expect(cycleQueryFocus("editor", true, false)).toBe("result");
+    expect(cycleQueryFocus("result", true, false)).toBe("editor");
+    expect(cycleQueryFocus("editor", false, false)).toBe("editor");
   });
 
   test("renders a visible block before a newline cursor position", () => {
