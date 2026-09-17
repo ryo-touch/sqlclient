@@ -355,7 +355,7 @@ export interface Dialect {
 - `Enter`: connectionsでは接続してcatalogへ移動する。catalogではschemaを選択してqueryへ移動し、tableではresultを開く
 - `Tab`: catalog ⇄ result ⇄ query を巡回。query mode の editor では巡回せず、table名・column名を補完する
 - `Ctrl-O`: `Tab` と同じ巡回を行う。query mode の editor から他の pane へ移る唯一のキー
-- 逆順の巡回は持たない。`Shift+Tab` は `Tab` と同じ扱いになる
+- 逆順の巡回は持たない。`Shift+Tab` は `Tab` と同じ前進として扱う。ただし query mode の editor では何も起こさない（補完は `Tab` 単独に限り、pane を出る旧習慣が draft の編集とmetadata取得に化けないようにする）
 - `e`: catalog / result では query mode の SQL editor を開き、query mode では editor へfocusを移す。connections と help では受け付けない
 - `Cmd+Enter`: editor の SQL を実行する
 - `Ctrl-G`: query editor の SQL を外部editorで編集する

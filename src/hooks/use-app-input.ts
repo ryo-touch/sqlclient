@@ -1,4 +1,5 @@
 import { useInput } from "ink";
+import type { Key } from "ink";
 import type { Dispatch } from "react";
 
 import { PAGE_SIZE } from "../core/query.ts";
@@ -33,7 +34,13 @@ interface UseAppInputOptions extends AppInputActions {
   exit(): void;
 }
 
-export function useAppInput({
+/**
+ * The whole key map as a plain function of the options, so it can be driven
+ * without a terminal or a React tree. Keeping it out of the hook is what lets
+ * the tests call it directly instead of replacing Ink's `useInput`, which is a
+ * module mock that leaks into every other test file in the same run.
+ */
+export function appInputHandler({
   state,
   dispatch,
   session,
@@ -51,13 +58,14 @@ export function useAppInput({
   openCatalogNode,
   expandCatalogSchema,
   reloadSchemas,
-}: UseAppInputOptions) {
-  useInput((input, key) => {
+}: UseAppInputOptions): (input: string, key: Key) => void {
+  return (input, key) => {
     // `Ctrl-O` is the pane key that works everywhere, because the editor takes
     // Tab for completion. Outside the editor the two are interchangeable so a
-    // single habit carries across modes. Shift is not read: the reverse ring is
-    // gone, and Shift+Tab therefore moves forward like Tab.
-    const nextPane = key.tab || (key.ctrl && input === "o");
+    // single habit carries across modes, and Shift is not read there: the
+    // reverse ring is gone, so Shift+Tab moves forward like Tab.
+    const paneKey = key.ctrl && input === "o";
+    const nextPane = key.tab || paneKey;
 
     if (key.ctrl && input === "c") {
       if (state.running) {
@@ -112,8 +120,11 @@ export function useAppInput({
     if (state.mode === "query" && state.queryFocus === "editor") {
       if (key.eventType === "release") return;
       if (key.tab) {
-        if (!state.running) void completeIdentifier();
-      } else if (key.ctrl && input === "o") {
+        // Shift+Tab used to be the way out of this pane. Completing on it would
+        // turn that habit into a draft edit and, on the first completion of the
+        // schema, a metadata query: inert is the kinder answer.
+        if (!key.shift && !state.running) void completeIdentifier();
+      } else if (paneKey) {
         dispatch({
           type: "setQueryFocus",
           focus: cycleQueryFocus(
@@ -497,5 +508,9 @@ export function useAppInput({
         dispatch({ type: "cancelConnectionSwitcher" });
       else exit();
     }
-  });
+  };
+}
+
+export function useAppInput(options: UseAppInputOptions) {
+  useInput(appInputHandler(options));
 }

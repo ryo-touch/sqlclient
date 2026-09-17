@@ -112,7 +112,7 @@ resultで `w` を押すと、保持中の列名と全行をカレントディレ
 
 connectionsで接続先を選んで `Enter` を押すとcatalogへ移動します。schemaを選んで `Enter` を押すと、そのschemaを接続の既定値に設定してquery画面へ進みます。tableを確認したい場合だけ、catalogでschemaにカーソルを合わせて `l` または右矢印を押すとtable一覧を読み込みます。`h` または左矢印で折りたためます。
 
-query画面の左側で複数行SQLを編集でき、右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → historyの順にfocusを切り替えます。editorでは `Tab` が補完なので、`Ctrl-O` で次のpaneへ移動します。`Ctrl-O` はeditor以外のpaneでも `Tab` と同じ移動をします。逆順の巡回はありません。result paneとhistory paneでは `e` でeditorへ戻れます。
+query画面の左側で複数行SQLを編集でき、右側には直近のresultが残るため、SQLと結果を同時に確認できます。通常の `Enter` は改行、macOSの `Cmd+Enter` はSQL実行です。`Tab` でeditor → result → historyの順にfocusを切り替えます。editorでは `Tab` が補完なので、`Ctrl-O` で次のpaneへ移動します。`Ctrl-O` はeditor以外のpaneでも `Tab` と同じ移動をします。逆順の巡回はありません（`Shift+Tab` は `Tab` と同じ前進で、editorでは何も起こしません）。result paneとhistory paneでは `e` でeditorへ戻れます。
 
 editorにfocusして `Ctrl-G` を押すと、現在のSQLを一時的な `.sql` ファイルへ書き出し、外部エディタで編集できます。`VISUAL`、次に `EDITOR` の順で環境変数を参照します。`code --wait` のように、エディタ名と引数をまとめて設定できます。保存してエディタを閉じると編集結果がSQL draftへ戻り、一時ファイルは削除されます。
 

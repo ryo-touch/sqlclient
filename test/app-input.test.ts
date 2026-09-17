@@ -1,22 +1,13 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import type { Key } from "ink";
 
+// The input map is the one place where a keybinding can be wired to the wrong
+// action without a type error. `appInputHandler` is the map as a plain
+// function, so every branch runs here without a terminal and without mocking
+// Ink, which would leak into every other file of the same test run.
+import { appInputHandler } from "../src/hooks/use-app-input.ts";
 import { initialState, type Action, type AppState } from "../src/state.ts";
 import type { ResultSet } from "../src/types.ts";
-
-// The input map is the one place where a keybinding can be wired to the wrong
-// action without a type error, and `useAppInput` reaches Ink only for
-// `useInput`. Handing the callback back instead of rendering it exercises every
-// branch without a terminal.
-let handler: ((input: string, key: Key) => void) | undefined;
-
-void mock.module("ink", () => ({
-  useInput(callback: (input: string, key: Key) => void) {
-    handler = callback;
-  },
-}));
-
-const { useAppInput } = await import("../src/hooks/use-app-input.ts");
 
 const NO_KEY: Key = {
   upArrow: false,
@@ -72,7 +63,7 @@ function press(
     called.push(name);
   };
 
-  useAppInput({
+  const handler = appInputHandler({
     state: { ...initialState, ...state },
     dispatch: (action) => actions.push(action),
     session: { current: undefined },
@@ -92,7 +83,7 @@ function press(
     reloadSchemas: record("reloadSchemas"),
   });
 
-  handler?.(input, { ...NO_KEY, ...key });
+  handler(input, { ...NO_KEY, ...key });
   return { actions, called };
 }
 
@@ -142,9 +133,10 @@ describe("query editor keys", () => {
     expect(actions).toEqual([]);
   });
 
-  test("Shift+Tab completes like Tab now that the reverse ring is gone", () => {
-    const { called } = press(EDITOR, "", { tab: true, shift: true });
-    expect(called).toEqual(["completeIdentifier"]);
+  test("Shift+Tab is inert here: it used to be the way out of the pane", () => {
+    const { actions, called } = press(EDITOR, "", { tab: true, shift: true });
+    expect(called).toEqual([]);
+    expect(actions).toEqual([]);
   });
 });
 
@@ -159,6 +151,14 @@ describe("pane keys outside the editor", () => {
     const ctrlO = press(state, "o", { ctrl: true }, { showQueryHistory: true });
     expect(tab.actions).toEqual([{ type: "setQueryFocus", focus: "history" }]);
     expect(ctrlO.actions).toEqual(tab.actions);
+  });
+
+  test("Shift+Tab still moves forward where Tab is not the completion key", () => {
+    const { actions } = press({ mode: "catalog" }, "", {
+      tab: true,
+      shift: true,
+    });
+    expect(actions).toEqual([{ type: "setMode", mode: "query" }]);
   });
 
   test("Ctrl-O moves on from catalog and result like Tab", () => {
