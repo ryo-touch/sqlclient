@@ -5,7 +5,7 @@ MySQL / PostgreSQLのread-onlyアカウントで使う、Ink製のターミナ�
 ## 必要なもの
 
 - macOS 26以降
-- Bun 1.3.14以降
+- Bun 1.4.4以降
 - MySQLを使う場合は `my_print_defaults` と `mysql_config_editor`
 
 ## インストールと起動
