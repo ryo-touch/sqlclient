@@ -22,6 +22,27 @@ bun build --compile src/index.tsx --outfile sqlclient
 ./sqlclient
 ```
 
+## 開発時の検証とCI
+
+PRとmainへの更新では、次の3つのチェックを実行します。BunのバージョンはCIの `BUN_VERSION` に固定し、必須チェック名は更新しても変わらない名前にしています。
+
+| チェック               | 検証内容                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `Quality`              | macOSでfrozen install、単体テスト、型、整形、単一バイナリのビルド                                                               |
+| `Dependency audit`     | `bun audit` で開発用を含む依存の既知脆弱性を検出                                                                                |
+| `Database integration` | Linux上の使い捨てMySQL 8.4／PostgreSQL 17で接続・カタログ・schema選択・ページング・NULL・保持行数上限・キャンセルと再実行を検証 |
+
+脆弱性監査は毎週月曜08:23 JSTにも実行します。Bun本体の脆弱性情報は `bun audit` の対象外なので、別途リリース情報を確認して更新します。
+
+DB統合テストはDocker Composeが使える環境で、次のコマンドを実行します。
+
+```bash
+bun install --frozen-lockfile
+bun run test:integration
+```
+
+テストごとに独立したComposeプロジェクトを作り、DBのポートはloopbackに動的割り当てします。固定のテスト用資格情報だけを使い、アプリの接続検証にはSELECT権限のユーザーを使います。成功・失敗時ともコンテナとボリュームを削除します。実際のlogin-path・service/password fileや共有DBは使いません。
+
 ## 接続の用意
 
 ### MySQL
