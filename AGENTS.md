@@ -3,7 +3,7 @@
 ## Project contract
 
 - This is a macOS terminal SQL client built with Bun, TypeScript, React, and Ink.
-- Treat `package.json` and the CI matrix as the sources of truth for supported Bun versions, and keep them consistent.
+- Treat `package.json` and the CI workflow's `BUN_VERSION` as the sources of truth for the minimum supported and tested Bun version, and keep them consistent.
 - The application sends user-authored SQL to the database without parsing, allowlisting, or rewriting it. Write protection belongs to the database account. Do not add a read-only badge or claim that the application verifies write protection.
 - Use only dedicated read-only accounts outside disposable local databases. Never run write SQL against staging or production while developing or testing this repository.
 - MySQL login paths and PostgreSQL service/password files are the credential sources. Do not read or print `~/.mylogin.cnf`, `~/.pgpass`, or other real credential files. Use repository fixtures and temporary files selected through `MYSQL_TEST_LOGIN_FILE`, `PGSERVICEFILE`, and `PGPASSFILE`.
@@ -35,10 +35,12 @@ bun test
 bun run typecheck
 bun run format:check
 bun run build
+bun audit
+bun run test:integration
 git diff --check
 ```
 
-- For runtime-compatibility or dependency changes, run the same frozen install, tests, typecheck, formatting check, and compiled build for every version in the CI matrix.
+- For runtime-compatibility or dependency changes, run the same frozen install, tests, typecheck, formatting check, and compiled build with the Bun version specified in CI.
 - Use local disposable MySQL 8.4 and PostgreSQL 17 containers for database integration tests. Keep setup credentials in temporary files and remove the containers and temporary files afterward.
 - Add or update tests for every changed reducer transition, parser edge case, dialect query, editor operation, or responsive layout boundary.
 
