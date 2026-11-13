@@ -200,6 +200,7 @@ export interface HistoryEntry {
 - login-path 名の列挙手段が `my_print_defaults` に無い場合は、設定ファイル（後述）に列挙された名前を候補として扱う
 - `my_print_defaults` のパスは、`PATH` → `/opt/homebrew/opt/mysql-client@8.4/bin/my_print_defaults` の順で探す。見つからなければ MySQL の接続は「利用不可」として一覧に理由付きで表示する（アプリは落とさない）
 - **環境変数 `MYSQL_TEST_LOGIN_FILE` が設定されていたら、そちらを login path ファイルとして使う。**これは MySQL 標準クライアントと同じ挙動であり、**利用者本人の `~/.mylogin.cnf` を汚さずに検証用の login-path を用意できる**ので、検証時に必須になる
+- DB名が未指定または空の場合、初期接続先は `information_schema` とする。Bunの既定値である `mysql` や、環境変数 `MYSQL_DATABASE` への暗黙の依存を避ける。業務用schemaは接続後のcatalogで選択する
 
 ### PostgreSQL
 
