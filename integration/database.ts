@@ -29,6 +29,54 @@ const ports = {
   postgres: testPort("POSTGRES_TEST_PORT"),
 };
 
+async function verifyMysqlWithoutDatabase(): Promise<void> {
+  const connection = {
+    engine: "mysql" as const,
+    name: "login-path-without-database",
+    source: "mylogin" as const,
+    host: "127.0.0.1",
+    port: ports.mysql,
+    user: "reader",
+    password,
+  };
+  const forbidden = new SQL({
+    adapter: "mysql",
+    hostname: connection.host,
+    port: connection.port,
+    username: connection.user,
+    password,
+    database: "mysql",
+    allowPublicKeyRetrieval: true,
+  });
+  try {
+    await assert.rejects(forbidden.connect(), /Access denied/u);
+  } finally {
+    await forbidden.close({ timeout: 0 });
+  }
+
+  const session = await connectDatabase(connection);
+  try {
+    const dialect = dialectFor("mysql");
+    assert(
+      (await listSchemas(session, dialect)).some(
+        (item) => item.schema === database,
+      ),
+    );
+    await selectSchema(session, dialect, database);
+    const selected = await executeUserQuery(
+      session,
+      "select count(*) as total from items",
+    );
+    assert(selected.ok);
+    assert.equal(Number(selected.result.rows[0]?.[0]), 405);
+    console.log(
+      "mysql: login path without database opens catalog and selects an accessible schema",
+    );
+  } finally {
+    await session.close();
+  }
+}
+
 async function verifyDatabase(engine: Engine): Promise<void> {
   const admin = new SQL({
     adapter: engine,
@@ -53,6 +101,7 @@ async function verifyDatabase(engine: Engine): Promise<void> {
       await admin.unsafe(
         "grant select on sqlclient_integration.* to 'reader'@'%'",
       );
+      await verifyMysqlWithoutDatabase();
     } else {
       await admin.unsafe(
         "create table items as select n as id, 'row-' || n as label from generate_series(1, 405) n",

@@ -60,6 +60,8 @@ mysql_config_editor set \
 
 検証用に別ファイルを使う場合は `MYSQL_TEST_LOGIN_FILE` を指定できます。アプリが `.mylogin.cnf` を作成・変更することはありません。
 
+login-pathはDB名を保持しないため、初期接続には `information_schema` を使います。接続後にcatalogから業務用schemaを選択してください。`mysql` システムDBへの権限や、起動時の `MYSQL_DATABASE` の指定は不要です。
+
 接続名による環境制限はありません。production用login-pathも一覧に表示されるため、必ずDB側でread-only権限を設定した専用アカウントを使ってください。
 
 ### PostgreSQL

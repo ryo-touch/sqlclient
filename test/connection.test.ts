@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { SQL } from "bun";
 
 import {
   buildConnectionOptions,
@@ -19,6 +20,38 @@ const connection: ResolvedConnection = {
 };
 
 describe("database connection options", () => {
+  test("opens MySQL catalog without requiring access to the mysql system database", async () => {
+    const previousDatabase = process.env["MYSQL_DATABASE"];
+    process.env["MYSQL_DATABASE"] = "unrelated_database";
+    try {
+      for (const database of [undefined, ""]) {
+        const pool = new SQL(
+          buildConnectionOptions({ ...connection, engine: "mysql", database }),
+        );
+        try {
+          expect(pool.options.database).toBe("information_schema");
+        } finally {
+          await pool.close({ timeout: 0 });
+        }
+      }
+    } finally {
+      if (previousDatabase === undefined) delete process.env["MYSQL_DATABASE"];
+      else process.env["MYSQL_DATABASE"] = previousDatabase;
+    }
+  });
+
+  test("preserves an explicit MySQL database", () => {
+    expect(
+      buildConnectionOptions({ ...connection, engine: "mysql" }),
+    ).toMatchObject({ database: connection.database });
+  });
+
+  test("leaves an unspecified PostgreSQL database to the driver", () => {
+    expect(
+      buildConnectionOptions({ ...connection, database: undefined }),
+    ).not.toHaveProperty("database");
+  });
+
   test("passes connection fields without serializing credentials into a URL", () => {
     expect(buildConnectionOptions(connection)).toMatchObject({
       adapter: "postgres",

@@ -96,6 +96,10 @@ export function buildConnectionOptions(
   connection: ResolvedConnection,
 ): Bun.SQL.Options {
   const hostname = normalizedHost(connection.host);
+  const database =
+    connection.engine === "mysql"
+      ? connection.database || "information_schema"
+      : connection.database;
   return {
     adapter: connection.engine,
     hostname,
@@ -104,9 +108,7 @@ export function buildConnectionOptions(
     ...(connection.password === undefined
       ? {}
       : { password: connection.password }),
-    ...(connection.database === undefined
-      ? {}
-      : { database: connection.database }),
+    ...(database === undefined ? {} : { database }),
     max: 1,
     idleTimeout: 0,
     maxLifetime: 0,

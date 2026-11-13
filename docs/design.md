@@ -32,6 +32,8 @@ Bun.SQL 1.4には行streamingやmaxRows APIがないため、「SQLを変えな�
 
 ## catalogのschemaを接続の既定値にする
 
+MySQLのDB名が未指定の場合、初期接続には `information_schema` を明示する。Bun 1.4.4はDB名を省略しても空文字を渡しても `mysql` を既定値にするため、業務DBへの参照権限しかないユーザーはcatalogを開く前に接続を拒否される。初期接続先を明示することで、このシステムDB権限の要求と `MYSQL_DATABASE` による接続先の混入を避ける。
+
 login-pathはdatabaseを保持できないため、MySQL接続直後の既定databaseは利用者がcatalogで見ているschemaと一致しない。schemaを開く操作でMySQLは `USE`、PostgreSQLは `search_path` を同じreserved sessionへ設定し、手書きSQLの非修飾table名が画面上の文脈と一致するようにした。
 
 ## editorとresultをInk内で並べる
